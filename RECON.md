@@ -171,12 +171,24 @@ Against `example.com` on Chrome for Testing 136, profile `tmp/ccb-profile`:
 
 **Limitations**
 
-* `find` is **LLM-backed** inside the extension (`Failed to find element:
-  Anthropic client not available`). The CLI falls back to scoring the
-  `read_page --interactive` snapshot locally.
+* `find` is **LLM-backed** inside the extension. It sends the accessibility
+  tree to `createAnthropicMessage` with `modelClass: "small_fast"`, which
+  resolves to `claude-haiku-4-5-20251001` unless the remote setting
+  `chrome_ext_models.small_fast_model` overrides it. The model runs through
+  the signed-in account, or through the desktop app's "inference relay" on
+  the encrypted native-messaging channel. A relay `tool_call` gets neither,
+  so locally the extension fails with `Anthropic client not available`. The
+  bridge runs `find` itself (`bridge/local-tools.mjs`): it reads the tree,
+  asks the model in `find.json`, and falls back to a keyword scorer. The
+  model is either Claude through a one-shot `claude -p` on the CLI's login,
+  or any OpenAI-compatible endpoint.
 * `browser_batch` pre-checks the extension's *internal* grant store, which stays
-  empty in local mode, so it refuses any prompt-gated action. The CLI detects
-  `permission_required` and replays the list as standalone calls.
+  empty in local mode, so it refuses any prompt-gated action. The extension's
+  only way to pre-approve on the relay path is `permission_mode:
+  "follow_a_plan"` with `allowed_domains`. That denies every other host
+  silently (no `permission_request`, so no audit entry) and matches hosts
+  exactly with `www.` stripped, which is not the allowlist's subdomain rule.
+  So the bridge runs batches itself, each action through the allowlist.
 * A CDP install (`Extensions.loadUnpacked`) is **session-only**; that is why
   `launch.mjs` owns the browser process. For a persistent install, load the
   folder by hand (section 4).
@@ -205,7 +217,8 @@ Against `example.com` on Chrome for Testing 136, profile `tmp/ccb-profile`:
 | `bridge/launch.mjs` | launches Chrome for Testing with the patched extension connected | yes |
 | `bridge/cli.mjs` | CLI for every tool | yes |
 | `bridge/mcp.mjs` | stdio MCP server so Claude Code can drive the bridge | yes |
-| `bridge/local-find.mjs` | offline `find` scorer shared by the CLI and the adapter | yes |
+| `bridge/local-tools.mjs` | bridge-run `find` (configured model, keyword fallback) and `browser_batch` | yes |
+| `bridge/local-find.mjs` | keyword scorer `find` falls back to | yes |
 | `bridge/selftest.mjs` | multi-browser routing + adapter self-test with fake peers | yes |
 | `bench/`, `docs/BENCHMARK.md` | official-vs-local benchmark: fixture, arm-B suites, raw results, write-up | yes |
 | `tools/ctx.py` | minified-JS context extractor used during the RE | yes |

@@ -13,7 +13,6 @@
  */
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { localFind } from '../bridge/local-find.mjs';
 import { createRun, refOf, expect } from './harness.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -99,15 +98,12 @@ await task('R3', 'read_page interactive on a web-component app', 'snapshot quali
 });
 
 await task('R4', 'find "search box"', 'semantic find (expected to diverge)', async () => {
+  // run by the bridge: the configured model, or the keyword scorer when none
   const r = await call('find', { query: 'search box', tabId: tab });
-  if (r.ok) {
-    note(r.fullText.split('\n')[0].slice(0, 160));
-    return /ref_\d+/.test(r.fullText) ? 'pass' : 'fail';
-  }
-  expect(/Anthropic client not available/i.test(r.fullText), `find failed: ${r.error}`);
-  const hits = localFind(snap, 'search box');
-  note(`extension find unavailable; local scorer top hit: ${hits[0]?.line || 'none'}`);
-  return /search/i.test(hits[0]?.line || '') ? 'degraded' : 'fail';
+  const engine = /\(find: (.+)\)/.exec(r.fullText)?.[1] || '?';
+  note(r.ok ? `${r.fullText.split('\n')[2]} [${engine}]` : `no match: ${r.error}`);
+  if (!r.ok || !/search/i.test(r.fullText.split('\n')[2] || '')) return 'fail';
+  return engine.startsWith('model') ? 'pass' : 'degraded';
 });
 
 await task('R5', 'search the site for "rust"', 'typing into a real control', async () => {

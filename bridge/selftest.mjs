@@ -8,6 +8,7 @@
  */
 import { spawn } from 'node:child_process';
 import crypto from 'node:crypto';
+import http from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -76,12 +77,8 @@ function fakePeer(deviceId, displayName) {
             ? reply([{ type: 'text', text: `Navigated to ${m.args.url}` }])
             : reply('Permission denied by user', { is_error: true, error_code: 'permission_denied_user' });
         }
-        case 'find':
-          return reply('Failed to find element: Anthropic client not available', { is_error: true });
         case 'read_page':
           return reply([{ type: 'text', text: 'link "Home" [ref_1]\nbutton "Submit order" [ref_4]\ntextbox "Email" [ref_5]' }]);
-        case 'browser_batch':
-          return reply('actions[0] needs a prompt (permission_required)', { is_error: true, error_code: 'permission_required' });
         case 'file_upload':
           return reply([{ type: 'text', text: JSON.stringify({ paths: m.args.paths, files: (m.args.files || []).map((f) => [f.name, f.mimeType, f.data]) }) }]);
         default:
@@ -120,9 +117,39 @@ function mcpClient(env) {
   return { child, request, call, stray, notify: (method) => child.stdin.write(JSON.stringify({ jsonrpc: '2.0', method }) + '\n') };
 }
 
+// ---------------------------------------------------------------- fake find model
+// An OpenAI-compatible endpoint with canned replies, standing in for the model
+// the bridge asks when it runs find.
+const MODEL_PORT = Number(process.env.SELFTEST_MODEL_PORT || 18767);
+const modelCalls = [];
+const modelServer = http.createServer((req, res) => {
+  let body = '';
+  req.on('data', (c) => { body += c; });
+  req.on('end', () => {
+    const msg = JSON.parse(body || '{}');
+    const user = msg.messages?.find((m) => m.role === 'user')?.content || '';
+    modelCalls.push({ auth: req.headers.authorization, model: msg.model, user });
+    if (/Description: Email field/.test(user)) { res.writeHead(500); return res.end('boom'); }
+    const content = /Description: submit button/.test(user)
+      ? 'ref_4 | button | Submit order | submits the form\nref_99 | button | Ghost | not in the tree\nFOUND: 2'
+      : 'FOUND: 0';
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content } }] }));
+  });
+}).listen(MODEL_PORT, '127.0.0.1');
+fs.writeFileSync(path.join(TMP, 'model.key'), 'test-key\n');
+
 // ---------------------------------------------------------------- run
 const server = spawn(process.execPath, [path.join(HERE, 'server.mjs')], {
-  env: { ...process.env, CCB_STATE_DIR: STATE, CCB_WS_PORT: String(WS_PORT), CCB_HTTP_PORT: String(HTTP_PORT) },
+  env: {
+    ...process.env,
+    CCB_STATE_DIR: STATE,
+    CCB_WS_PORT: String(WS_PORT),
+    CCB_HTTP_PORT: String(HTTP_PORT),
+    CCB_FIND_URL: `http://127.0.0.1:${MODEL_PORT}/v1`,
+    CCB_FIND_MODEL: 'fake-find-model',
+    CCB_FIND_KEY_FILE: path.join(TMP, 'model.key'),
+  },
   stdio: ['ignore', 'ignore', 'inherit'],
 });
 const peers = [];
@@ -181,6 +208,57 @@ try {
   const single = await tool('tabs_context_mcp');
   check('one browser left: no device_id needed', textOf(single.result?.content) === 'peer:aaaa1111-daily', single);
 
+  console.log('server: find and browser_batch run by the bridge');
+  let f = await tool('find', { query: 'submit button', tabId: 1 });
+  let ft = textOf(f.result?.content);
+  check('find asks the configured model and returns its refs', f.ok && /- ref_4: button "Submit order"/.test(ft) && /find: model fake-find-model/.test(ft), ft);
+  check('find drops refs the page does not have', !/ref_99/.test(ft), ft);
+  check('find sends the key from key_file', modelCalls.at(-1)?.auth === 'Bearer test-key', modelCalls.at(-1));
+  f = await tool('find', { query: 'Email field', tabId: 1 });
+  ft = textOf(f.result?.content);
+  check('find falls back to the keyword scorer when the model fails', f.ok && /ref_5/.test(ft) && /keyword scorer \(the find model failed\)/.test(ft), ft);
+  f = await tool('find', { query: 'nothing like it', tabId: 1 });
+  check('no match is a find_no_match error', !f.ok && f.result?.error_code === 'find_no_match', f);
+  // the claude-code engine, against a fake `claude` that records how it was run
+  const fakeClaude = path.join(TMP, 'fake-claude');
+  fs.writeFileSync(fakeClaude, `#!/usr/bin/env node
+const fs = require('fs'), path = require('path');
+let input = '';
+process.stdin.on('data', (d) => { input += d; });
+process.stdin.on('end', () => {
+  fs.writeFileSync(path.join(__dirname, 'fake-claude-call.json'), JSON.stringify({ argv: process.argv.slice(2), env: Object.keys(process.env), cwd: process.cwd(), input }));
+  process.stdout.write(JSON.stringify({ type: 'result', is_error: false, result: 'ref_4 | button | Submit order | via fake claude\\\\nFOUND: 1' }));
+});
+`, { mode: 0o755 });
+  fs.writeFileSync(path.join(STATE, 'find.json'), JSON.stringify({ engine: 'claude-code', model: 'claude-haiku-5-5', claude_bin: fakeClaude }));
+  f = await tool('find', { query: 'submit button', tabId: 1 });
+  ft = textOf(f.result?.content);
+  check('claude-code engine: find returns the CLI reply\'s refs', f.ok && /- ref_4: button "Submit order" - via fake claude/.test(ft) && /\(claude -p\)/.test(ft), ft);
+  const run = JSON.parse(fs.readFileSync(path.join(TMP, 'fake-claude-call.json'), 'utf8'));
+  const argAfter = (flag) => run.argv[run.argv.indexOf(flag) + 1];
+  check('claude-code engine: one lean shot (no tools, MCP, settings or saved session)', run.argv.includes('-p') && argAfter('--tools') === ''
+    && run.argv.includes('--strict-mcp-config') && argAfter('--setting-sources') === '' && run.argv.includes('--no-session-persistence')
+    && argAfter('--output-format') === 'json' && argAfter('--effort') === 'low' && /Description: submit button/.test(run.input), run.argv);
+  check('claude-code engine: clean environment, neutral working directory', !run.env.some((k) => /^CLAUDE|^ANTHROPIC/.test(k))
+    && fs.realpathSync(run.cwd) === fs.realpathSync(os.tmpdir()), { env: run.env, cwd: run.cwd });
+  fs.rmSync(path.join(STATE, 'find.json'));
+
+  let bt = await tool('browser_batch', { actions: [
+    { name: 'tabs_context_mcp', input: {} },
+    { name: 'computer', input: { action: 'screenshot', tabId: 1 } },
+    { name: 'find', input: { query: 'submit button', tabId: 1 } },
+  ] });
+  let btt = textOf(bt.result?.content);
+  check('browser_batch runs every action in one call (find included)', bt.ok && /\[tabs_context_mcp\] peer:/.test(btt) && /\[computer:screenshot\]/.test(btt)
+    && /\[find\] Found 1/.test(btt) && bt.result.content.some((b) => b.type === 'image'), btt);
+  bt = await tool('browser_batch', { actions: [
+    { name: 'navigate', input: { url: 'https://blocked.example/', tabId: 1 } },
+    { name: 'tabs_context_mcp', input: {} },
+  ] });
+  btt = textOf(bt.result?.content);
+  check('browser_batch stops at the first failure; the allowlist still applies', !bt.ok
+    && /actions\[0\] \(navigate\) failed: Permission denied by user \(0 completed, 1 remaining\)/.test(btt), btt);
+
   const agent2 = await fakePeer('bbbb2222-agent');
   peers.push(agent2);
 
@@ -232,18 +310,18 @@ try {
   check('denial: isError, names the host, points at the operator', r.isError && /blocked\.example/.test(navText) && /cli\.mjs allow/.test(navText) && /error_code: permission_denied_user/.test(navText), navText);
 
   r = await mcp.call('find', { query: 'submit button', tabId: 1 });
-  check('find falls back to the local scorer', !r.isError && /\[ref_4\]/.test(textOf(r.content).split('\n')[1] || ''), textOf(r.content));
+  check('find goes through the bridge\'s model', !r.isError && /- ref_4: button "Submit order"/.test(textOf(r.content)) && /find: model/.test(textOf(r.content)), textOf(r.content));
 
   r = await mcp.call('browser_batch', { actions: [
     { name: 'tabs_context_mcp', input: {} },
     { name: 'computer', input: { action: 'screenshot', tabId: 1 } },
   ] });
-  check('browser_batch replays standalone on permission_required', !r.isError && /\[2\/2\] computer/.test(textOf(r.content)) && r.content.some((b) => b.type === 'image'), textOf(r.content));
+  check('browser_batch is one call through the bridge', !r.isError && /\[computer:screenshot\]/.test(textOf(r.content)) && r.content.some((b) => b.type === 'image'), textOf(r.content));
   r = await mcp.call('browser_batch', { actions: [
     { name: 'navigate', input: { url: 'https://blocked.example/', tabId: 1 } },
     { name: 'tabs_context_mcp', input: {} },
   ] });
-  check('replayed batch stops at the first error', r.isError && /Stopped at actions\[0\]; 1 not run/.test(textOf(r.content)), textOf(r.content));
+  check('a batch stops at the first error', r.isError && /actions\[0\] \(navigate\) failed: .*1 remaining/.test(textOf(r.content)), textOf(r.content));
 
   r = await mcp.call('file_upload', { paths: [path.join(WORK, 'pixel.png')], ref: 'ref_5', tabId: 1 });
   const up = JSON.parse(r.content[0].text);
@@ -261,6 +339,7 @@ try {
   r = await dead.call('tabs_context_mcp', {});
   check('bridge down: isError telling the operator how to start it', r.isError && /server\.mjs/.test(textOf(r.content)), r);
 
+  check('the extension never received find or browser_batch', peers.every((p) => !p.calls.some((c) => c.tool === 'find' || c.tool === 'browser_batch')));
   check('stdout carried only JSON-RPC', clients.every((c) => c.stray.length === 0), clients.map((c) => c.stray));
 } catch (err) {
   failures++;
@@ -269,6 +348,7 @@ try {
   for (const c of clients) c.child.kill();
   for (const p of peers) p.ws.terminate();
   server.kill();
+  modelServer.close();
   fs.rmSync(TMP, { recursive: true, force: true });
 }
 

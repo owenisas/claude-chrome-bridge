@@ -1,0 +1,1074 @@
+{
+  "arm": "B",
+  "suite": "fixture",
+  "label": "patched extension via local bridge (POST /tool)",
+  "started_at": "2026-10-28T11:52:17.849Z",
+  "device_id": "40d784c3-f269-48ae-803a-c38e32aaa6b4",
+  "extension_version": "1.0.102",
+  "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+  "fixture": "http://127.0.0.1:8899/",
+  "mode": "background session group",
+  "finished_at": "2026-10-28T11:52:27.198Z",
+  "summary": {
+    "pass": 15,
+    "degraded": 0,
+    "fail": 0
+  },
+  "total_tool_calls": 61,
+  "total_permission_prompts": 55,
+  "tasks": [
+    {
+      "id": 1,
+      "name": "navigate to the fixture",
+      "isolates": "transport + permission gating",
+      "verdict": "pass",
+      "calls": [
+        {
+          "tool": "tabs_context_mcp",
+          "args": {
+            "createIfEmpty": true
+          },
+          "ms": 36,
+          "ok": true,
+          "text": "{\"availableTabs\":[{\"tabId\":46544415,\"title\":\"New Tab\",\"url\":\"chrome://newtab/\"}],\"tabGroupId\":265332509}\n\n\nTab Context:\n- Available tabs:\n  • tabId 46544415: \"New Tab\" (\"chrome://newtab/\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significantly faster. Batch your next sequence of clicks, types, navigations, and scre",
+          "images": []
+        },
+        {
+          "tool": "navigate",
+          "args": {
+            "url": "http://127.0.0.1:8899/",
+            "tabId": 46544415
+          },
+          "ms": 325,
+          "ok": true,
+          "text": "Navigated to http://127.0.0.1:8899/\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"http://127.0.0.1:8899/\" (\"http://127.0.0.1:8899/\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significantly faster. Batch your next sequence of clicks, types, navigations, and screenshots together.<",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify(location.href) + '@@'",
+            "tabId": 46544415
+          },
+          "ms": 517,
+          "ok": true,
+          "text": "@@\"http://127.0.0.1:8899/\"@@\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/\")",
+          "images": []
+        }
+      ],
+      "notes": [],
+      "wall_ms": 878,
+      "tool_calls": 3,
+      "permission_prompts": 2,
+      "permission_log": [
+        "permission ALLOW navigate http://127.0.0.1:8899/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript http://127.0.0.1:8899/ 40d784c3-f269-48ae-803a-c38e32aaa6b4"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "read_page interactive: count refs, locate the submit button",
+      "isolates": "snapshot quality",
+      "verdict": "pass",
+      "calls": [
+        {
+          "tool": "read_page",
+          "args": {
+            "tabId": 46544415,
+            "filter": "interactive"
+          },
+          "ms": 80,
+          "ok": true,
+          "text": "textbox [ref_1]\ntextbox [ref_2]\ncombobox \"Red\" [ref_3]\n option \"Red\" (selected) value=\"red\"\n option \"Green\" value=\"green\"\n option \"Blue\" value=\"blue\"\ncheckbox \"on\" [ref_4] type=\"checkbox\"\nbutton \"Submit order\" [ref_5] type=\"submit\"\nbutton \"Change hash\" [ref_6] type=\"button\"\nbutton \"Log error and fetch\" [ref_7] type=\"button\"\nbutton \"Hover target\" [ref_8]\nbutton \"Drag source\" [ref_9]\nbutton \"Upload ",
+          "images": []
+        }
+      ],
+      "notes": [
+        "12 refs"
+      ],
+      "wall_ms": 80,
+      "tool_calls": 1,
+      "permission_prompts": 1,
+      "permission_log": [
+        "permission ALLOW read_page_content http://127.0.0.1:8899/ 40d784c3-f269-48ae-803a-c38e32aaa6b4"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "find \"submit button\"",
+      "isolates": "semantic find (expected to diverge)",
+      "verdict": "pass",
+      "calls": [
+        {
+          "tool": "find",
+          "args": {
+            "query": "submit button",
+            "tabId": 46544415
+          },
+          "ms": 3479,
+          "ok": true,
+          "text": "Found 1 matching element\n\n- ref_5: button \"Submit order\" - It is a button with type=\"submit\", matching the description of a submit button.\n(find: model gufo-huihui-qwen3.8-flash-next-abliterated-ud-q4_k_xl)",
+          "images": []
+        }
+      ],
+      "notes": [
+        "- ref_5: button \"Submit order\" - It is a button with type=\"submit\", matching the description of a submit button. [model gufo-huihui-qwen3.8-flash-next-abliterated-ud-q4_k_xl, 3479 ms]"
+      ],
+      "wall_ms": 3479,
+      "tool_calls": 1,
+      "permission_prompts": 1,
+      "permission_log": [
+        "permission ALLOW read_page_content http://127.0.0.1:8899/ 40d784c3-f269-48ae-803a-c38e32aaa6b4"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "form_input fill, then computer type",
+      "isolates": "the two input paths",
+      "verdict": "pass",
+      "calls": [
+        {
+          "tool": "form_input",
+          "args": {
+            "ref": "ref_1",
+            "value": "Ada",
+            "tabId": 46544415
+          },
+          "ms": 9,
+          "ok": true,
+          "text": "Set text value to \"Ada\" (previous: \"\")\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/\")",
+          "images": []
+        },
+        {
+          "tool": "computer",
+          "args": {
+            "action": "left_click",
+            "ref": "ref_2",
+            "tabId": 46544415
+          },
+          "ms": 434,
+          "ok": true,
+          "text": "Clicked on element ref_2\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significantly faster. Batch your next sequence of clicks, types, navigations, and screenshots together.</system-remi",
+          "images": []
+        },
+        {
+          "tool": "computer",
+          "args": {
+            "action": "type",
+            "text": "ada@example.test",
+            "tabId": 46544415
+          },
+          "ms": 19,
+          "ok": true,
+          "text": "Typed \"ada@example.test\"\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significantly faster. Batch your next sequence of clicks, types, navigations, and screenshots together.</system-remi",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify([document.getElementById(\"name\").value, document.getElementById(\"email\").value]) + '@@'",
+            "tabId": 46544415
+          },
+          "ms": 8,
+          "ok": true,
+          "text": "@@[\"Ada\",\"ada@example.test\"]@@\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/\")",
+          "images": []
+        }
+      ],
+      "notes": [],
+      "wall_ms": 471,
+      "tool_calls": 4,
+      "permission_prompts": 4,
+      "permission_log": [
+        "permission ALLOW type http://127.0.0.1:8899/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW click http://127.0.0.1:8899/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW type http://127.0.0.1:8899/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript http://127.0.0.1:8899/ 40d784c3-f269-48ae-803a-c38e32aaa6b4"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "left_click by ref on the mutating button",
+      "isolates": "ref resolution + real input events",
+      "verdict": "pass",
+      "calls": [
+        {
+          "tool": "computer",
+          "args": {
+            "action": "left_click",
+            "ref": "ref_6",
+            "tabId": 46544415
+          },
+          "ms": 284,
+          "ok": true,
+          "text": "Clicked on element ref_6\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#clicked\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significantly faster. Batch your next sequence of clicks, types, navigations, and screenshots together.</sys",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify([location.hash, document.getElementById(\"hashtext\").textContent]) + '@@'",
+            "tabId": 46544415
+          },
+          "ms": 7,
+          "ok": true,
+          "text": "@@[\"#clicked\",\"clicked at 1793188343035\"]@@\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#clicked\")",
+          "images": []
+        }
+      ],
+      "notes": [],
+      "wall_ms": 291,
+      "tool_calls": 2,
+      "permission_prompts": 2,
+      "permission_log": [
+        "permission ALLOW click http://127.0.0.1:8899/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript http://127.0.0.1:8899/#clicked 40d784c3-f269-48ae-803a-c38e32aaa6b4"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "computer screenshot",
+      "isolates": "capture",
+      "verdict": "pass",
+      "calls": [
+        {
+          "tool": "computer",
+          "args": {
+            "action": "screenshot",
+            "tabId": 46544415
+          },
+          "ms": 145,
+          "ok": true,
+          "text": "Successfully captured screenshot (1485x812, jpeg) - ID: ss_3193io7nq\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#clicked\")",
+          "images": [
+            {
+              "media": "image/jpeg",
+              "bytes": 29331
+            }
+          ]
+        }
+      ],
+      "notes": [
+        "1485x812, image/jpeg, 29331 bytes, id ss_3193io7nq"
+      ],
+      "wall_ms": 145,
+      "tool_calls": 1,
+      "permission_prompts": 1,
+      "permission_log": [
+        "permission ALLOW read_page_content http://127.0.0.1:8899/#clicked 40d784c3-f269-48ae-803a-c38e32aaa6b4"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "javascript_tool reads a page variable",
+      "isolates": "JS eval",
+      "verdict": "pass",
+      "calls": [
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify(window.FIXTURE_VAR.n) + '@@'",
+            "tabId": 46544415
+          },
+          "ms": 7,
+          "ok": true,
+          "text": "@@42@@\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#clicked\")",
+          "images": []
+        }
+      ],
+      "notes": [],
+      "wall_ms": 7,
+      "tool_calls": 1,
+      "permission_prompts": 1,
+      "permission_log": [
+        "permission ALLOW execute_javascript http://127.0.0.1:8899/#clicked 40d784c3-f269-48ae-803a-c38e32aaa6b4"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "read_console_messages after triggering an error",
+      "isolates": "console capture",
+      "verdict": "pass",
+      "calls": [
+        {
+          "tool": "read_console_messages",
+          "args": {
+            "tabId": 46544415,
+            "clear": true
+          },
+          "ms": 6,
+          "ok": true,
+          "text": "No console messages found for this tab.\n\nNote: Console tracking starts when this tool is first called. If the page loaded before calling this tool, you may need to refresh the page to capture console messages from page load.\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#clicked\")",
+          "images": []
+        },
+        {
+          "tool": "computer",
+          "args": {
+            "action": "left_click",
+            "ref": "ref_7",
+            "tabId": 46544415
+          },
+          "ms": 254,
+          "ok": true,
+          "text": "Clicked on element ref_7\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#clicked\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significantly faster. Batch your next sequence of clicks, types, navigations, and screenshots together.</sys",
+          "images": []
+        },
+        {
+          "tool": "read_console_messages",
+          "args": {
+            "tabId": 46544415,
+            "onlyErrors": true,
+            "pattern": "ccb-fixture-error"
+          },
+          "ms": 5,
+          "ok": true,
+          "text": "Found 1 error/exception messages:\n\n[1] [7:52:23 PM] [ERROR] (http://127.0.0.1:8899/:89:12)\nccb-fixture-error\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#clicked\")",
+          "images": []
+        }
+      ],
+      "notes": [],
+      "wall_ms": 265,
+      "tool_calls": 3,
+      "permission_prompts": 3,
+      "permission_log": [
+        "permission ALLOW read_console_messages http://127.0.0.1:8899/#clicked 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW click http://127.0.0.1:8899/#clicked 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW read_console_messages http://127.0.0.1:8899/#clicked 40d784c3-f269-48ae-803a-c38e32aaa6b4"
+      ]
+    },
+    {
+      "id": 9,
+      "name": "read_network_requests after a fetch",
+      "isolates": "network capture",
+      "verdict": "pass",
+      "calls": [
+        {
+          "tool": "read_network_requests",
+          "args": {
+            "tabId": 46544415,
+            "clear": true
+          },
+          "ms": 59,
+          "ok": true,
+          "text": "No network requests found for this tab.\n\nNote: Network tracking starts when this tool is first called. If the page loaded before calling this tool, you may need to refresh the page or perform actions that trigger network requests.\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#clicked\")",
+          "images": []
+        },
+        {
+          "tool": "computer",
+          "args": {
+            "action": "left_click",
+            "ref": "ref_7",
+            "tabId": 46544415
+          },
+          "ms": 251,
+          "ok": true,
+          "text": "Clicked on element ref_7\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#clicked\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significantly faster. Batch your next sequence of clicks, types, navigations, and screenshots together.</sys",
+          "images": []
+        },
+        {
+          "tool": "computer",
+          "args": {
+            "action": "wait",
+            "duration": 1,
+            "tabId": 46544415
+          },
+          "ms": 1008,
+          "ok": true,
+          "text": "Waited for 1 second\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#clicked\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significantly faster. Batch your next sequence of clicks, types, navigations, and screenshots together.</system-r",
+          "images": []
+        },
+        {
+          "tool": "read_network_requests",
+          "args": {
+            "tabId": 46544415,
+            "urlPattern": "/api/ping"
+          },
+          "ms": 63,
+          "ok": true,
+          "text": "Found 1 network request (filtered by URL pattern: \"/api/ping\"):\n\n1. url: http://127.0.0.1:8899/api/ping?from=fixture\n   method: GET\n   statusCode: 200\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#clicked\")",
+          "images": []
+        }
+      ],
+      "notes": [],
+      "wall_ms": 1380,
+      "tool_calls": 4,
+      "permission_prompts": 3,
+      "permission_log": [
+        "permission ALLOW read_network_requests http://127.0.0.1:8899/#clicked 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW click http://127.0.0.1:8899/#clicked 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW read_network_requests http://127.0.0.1:8899/#clicked 40d784c3-f269-48ae-803a-c38e32aaa6b4"
+      ]
+    },
+    {
+      "id": 10,
+      "name": "multi-step: fill, submit, assert the result",
+      "isolates": "orchestration, step count",
+      "verdict": "pass",
+      "calls": [
+        {
+          "tool": "form_input",
+          "args": {
+            "ref": "ref_1",
+            "value": "Grace",
+            "tabId": 46544415
+          },
+          "ms": 13,
+          "ok": true,
+          "text": "Set text value to \"Grace\" (previous: \"Ada\")\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#clicked\")",
+          "images": []
+        },
+        {
+          "tool": "form_input",
+          "args": {
+            "ref": "ref_2",
+            "value": "grace@example.test",
+            "tabId": 46544415
+          },
+          "ms": 10,
+          "ok": true,
+          "text": "Set text value to \"grace@example.test\" (previous: \"ada@example.test\")\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#clicked\")",
+          "images": []
+        },
+        {
+          "tool": "form_input",
+          "args": {
+            "ref": "ref_3",
+            "value": "green",
+            "tabId": 46544415
+          },
+          "ms": 7,
+          "ok": true,
+          "text": "Selected option \"green\" in dropdown (previous: \"red\")\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#clicked\")",
+          "images": []
+        },
+        {
+          "tool": "form_input",
+          "args": {
+            "ref": "ref_4",
+            "value": true,
+            "tabId": 46544415
+          },
+          "ms": 6,
+          "ok": true,
+          "text": "Checkbox checked (previous: false)\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#clicked\")",
+          "images": []
+        },
+        {
+          "tool": "computer",
+          "args": {
+            "action": "left_click",
+            "ref": "ref_5",
+            "tabId": 46544415
+          },
+          "ms": 265,
+          "ok": true,
+          "text": "Clicked on element ref_5\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#clicked\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significantly faster. Batch your next sequence of clicks, types, navigations, and screenshots together.</sys",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify(document.getElementById(\"result\").textContent) + '@@'",
+            "tabId": 46544415
+          },
+          "ms": 5,
+          "ok": true,
+          "text": "@@\"submitted:Grace|grace@example.test|green|true\"@@\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#clicked\")",
+          "images": []
+        }
+      ],
+      "notes": [],
+      "wall_ms": 306,
+      "tool_calls": 6,
+      "permission_prompts": 6,
+      "permission_log": [
+        "permission ALLOW type http://127.0.0.1:8899/#clicked 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW type http://127.0.0.1:8899/#clicked 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW type http://127.0.0.1:8899/#clicked 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW type http://127.0.0.1:8899/#clicked 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW click http://127.0.0.1:8899/#clicked 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript http://127.0.0.1:8899/#clicked 40d784c3-f269-48ae-803a-c38e32aaa6b4"
+      ]
+    },
+    {
+      "id": 11,
+      "name": "cross-domain hop, count permission prompts",
+      "isolates": "the permission model",
+      "verdict": "pass",
+      "calls": [
+        {
+          "tool": "navigate",
+          "args": {
+            "url": "http://localhost:8899/",
+            "tabId": 46544415
+          },
+          "ms": 4,
+          "ok": false,
+          "error_code": "permission_denied_user",
+          "text": "Permission denied by user",
+          "images": [],
+          "error": "Permission denied by user"
+        },
+        {
+          "tool": "navigate",
+          "args": {
+            "url": "http://127.0.0.1:8899/",
+            "tabId": 46544415
+          },
+          "ms": 24,
+          "ok": true,
+          "text": "Navigated to http://127.0.0.1:8899/\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"http://127.0.0.1:8899/\" (\"http://127.0.0.1:8899/\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significantly faster. Batch your next sequence of clicks, types, navigations, and screenshots together.<",
+          "images": []
+        }
+      ],
+      "notes": [
+        "hop to http://localhost:8899/ refused: permission_denied_user"
+      ],
+      "wall_ms": 27,
+      "tool_calls": 2,
+      "permission_prompts": 2,
+      "permission_log": [
+        "permission DENY navigate http://localhost:8899/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW navigate http://127.0.0.1:8899/ 40d784c3-f269-48ae-803a-c38e32aaa6b4"
+      ]
+    },
+    {
+      "id": 12,
+      "name": "browser_batch with a prompt-gated action",
+      "isolates": "batch gating (expected to diverge)",
+      "verdict": "pass",
+      "calls": [
+        {
+          "tool": "browser_batch",
+          "args": {
+            "actions": [
+              {
+                "name": "navigate",
+                "input": {
+                  "url": "http://127.0.0.1:8899/#batch",
+                  "tabId": 46544415
+                }
+              },
+              {
+                "name": "computer",
+                "input": {
+                  "action": "screenshot",
+                  "tabId": 46544415
+                }
+              }
+            ]
+          },
+          "ms": 532,
+          "ok": true,
+          "text": "[navigate] Navigated to http://127.0.0.1:8899/#batch\n[computer:screenshot] Successfully captured screenshot (1485x812, jpeg) - ID: ss_5712sjf6h\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#batch\")",
+          "images": [
+            {
+              "media": "image/jpeg",
+              "bytes": 27000
+            }
+          ]
+        }
+      ],
+      "notes": [],
+      "wall_ms": 533,
+      "tool_calls": 1,
+      "permission_prompts": 2,
+      "permission_log": [
+        "permission ALLOW navigate http://127.0.0.1:8899/#batch 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW read_page_content http://127.0.0.1:8899/#batch 40d784c3-f269-48ae-803a-c38e32aaa6b4"
+      ]
+    },
+    {
+      "id": 13,
+      "name": "tabs_create_mcp / tabs_close_mcp lifecycle",
+      "isolates": "tab grouping",
+      "verdict": "pass",
+      "calls": [
+        {
+          "tool": "tabs_context_mcp",
+          "args": {},
+          "ms": 7,
+          "ok": true,
+          "text": "{\"availableTabs\":[{\"tabId\":46544415,\"title\":\"CCB benchmark fixture\",\"url\":\"http://127.0.0.1:8899/#batch\"}],\"selectedTabId\":46544415,\"tabGroupId\":265332509}\n\n\nTab Context:\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#batch\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significa",
+          "images": []
+        },
+        {
+          "tool": "tabs_create_mcp",
+          "args": {},
+          "ms": 30,
+          "ok": true,
+          "text": "Created new tab. Tab ID: 46544418\n\n\nTab Context:\n- Executed on tabId: 46544418\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#batch\")\n  • tabId 46544418: \"New Tab\" (\"\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significantly faster. Batch your next sequence of clicks, types, n",
+          "images": []
+        },
+        {
+          "tool": "tabs_context_mcp",
+          "args": {},
+          "ms": 4,
+          "ok": true,
+          "text": "{\"availableTabs\":[{\"tabId\":46544415,\"title\":\"CCB benchmark fixture\",\"url\":\"http://127.0.0.1:8899/#batch\"},{\"tabId\":46544418,\"title\":\"New Tab\",\"url\":\"chrome://newtab/\"}],\"selectedTabId\":46544415,\"tabGroupId\":265332509}\n\n\nTab Context:\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#batch\")\n  • tabId 46544418: \"New Tab\" (\"chrome://newtab/\")\n<system-reminder>You ",
+          "images": []
+        },
+        {
+          "tool": "tabs_close_mcp",
+          "args": {
+            "tabId": 46544418
+          },
+          "ms": 17,
+          "ok": true,
+          "text": "Closed tab 46544418. 1 tab(s) remain.\n\n\nTab Context:\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#batch\")",
+          "images": []
+        },
+        {
+          "tool": "tabs_context_mcp",
+          "args": {},
+          "ms": 5,
+          "ok": true,
+          "text": "{\"availableTabs\":[{\"tabId\":46544415,\"title\":\"CCB benchmark fixture\",\"url\":\"http://127.0.0.1:8899/#batch\"}],\"selectedTabId\":46544415,\"tabGroupId\":265332509}\n\n\nTab Context:\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#batch\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significa",
+          "images": []
+        }
+      ],
+      "notes": [],
+      "wall_ms": 64,
+      "tool_calls": 5,
+      "permission_prompts": 0,
+      "permission_log": []
+    },
+    {
+      "id": 14,
+      "name": "resize_window, zoom, scroll, scroll_to, hover, drag",
+      "isolates": "the unverified tail",
+      "verdict": "pass",
+      "calls": [
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify((window.scrollTo(0, 0), 0)) + '@@'",
+            "tabId": 46544415
+          },
+          "ms": 8,
+          "ok": true,
+          "text": "@@0@@\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#batch\")",
+          "images": []
+        },
+        {
+          "tool": "read_page",
+          "args": {
+            "tabId": 46544415,
+            "filter": "interactive"
+          },
+          "ms": 64,
+          "ok": true,
+          "text": "textbox [ref_1]\ntextbox [ref_2]\ncombobox \"Red\" [ref_3]\n option \"Red\" (selected) value=\"red\"\n option \"Green\" value=\"green\"\n option \"Blue\" value=\"blue\"\ncheckbox \"on\" [ref_4] type=\"checkbox\"\nbutton \"Submit order\" [ref_5] type=\"submit\"\nbutton \"Change hash\" [ref_6] type=\"button\"\nbutton \"Log error and fetch\" [ref_7] type=\"button\"\nbutton \"Hover target\" [ref_8]\nbutton \"Drag source\" [ref_9]\nbutton \"Upload ",
+          "images": []
+        },
+        {
+          "tool": "computer",
+          "args": {
+            "action": "screenshot",
+            "tabId": 46544415
+          },
+          "ms": 141,
+          "ok": true,
+          "text": "Successfully captured screenshot (1485x812, jpeg) - ID: ss_5990xg0q6\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#batch\")",
+          "images": [
+            {
+              "media": "image/jpeg",
+              "bytes": 27000
+            }
+          ]
+        },
+        {
+          "tool": "computer",
+          "args": {
+            "action": "zoom",
+            "region": [
+              0,
+              0,
+              400,
+              300
+            ],
+            "tabId": 46544415
+          },
+          "ms": 171,
+          "ok": true,
+          "text": "Successfully captured zoomed screenshot of region (0,0) to (400,300) - 814x612 pixels\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#batch\")",
+          "images": [
+            {
+              "media": "image/png",
+              "bytes": 50932
+            }
+          ]
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify((() => { const r = document.getElementById(\"scroller\").getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()) + '@@'",
+            "tabId": 46544415
+          },
+          "ms": 6,
+          "ok": true,
+          "text": "@@[177,493.4921875]@@\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#batch\")",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify(window.innerWidth) + '@@'",
+            "tabId": 46544415
+          },
+          "ms": 5,
+          "ok": true,
+          "text": "@@1512@@\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#batch\")",
+          "images": []
+        },
+        {
+          "tool": "computer",
+          "args": {
+            "action": "scroll",
+            "coordinate": [
+              174,
+              485
+            ],
+            "scroll_direction": "down",
+            "scroll_amount": 3,
+            "tabId": 46544415
+          },
+          "ms": 271,
+          "ok": true,
+          "text": "Scrolled down by 3 ticks at (174, 485)\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#batch\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significantly faster. Batch your next sequence of clicks, types, navigations, and screenshots to",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify(document.getElementById(\"scroller\").scrollTop) + '@@'",
+            "tabId": 46544415
+          },
+          "ms": 11,
+          "ok": true,
+          "text": "@@300@@\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#batch\")",
+          "images": []
+        },
+        {
+          "tool": "read_page",
+          "args": {
+            "tabId": 46544415
+          },
+          "ms": 63,
+          "ok": true,
+          "text": "heading \"CCB benchmark fixture\" [ref_13]\nregion [ref_14]\n form [ref_15]\n  label \"Name\" [ref_16]\n   textbox [ref_1]\n  label \"Email\" [ref_17]\n   textbox [ref_2]\n  label \"Color\" [ref_18]\n   combobox \"Red\" [ref_3]\n    option \"Red\" (selected) value=\"red\"\n    option \"Green\" value=\"green\"\n    option \"Blue\" value=\"blue\"\n    generic \"Red\" [ref_19]\n    generic \"Green\" [ref_20]\n    generic \"Blue\" [ref_21]\n  ",
+          "images": []
+        },
+        {
+          "tool": "computer",
+          "args": {
+            "action": "scroll_to",
+            "ref": "ref_35",
+            "tabId": 46544415
+          },
+          "ms": 12,
+          "ok": true,
+          "text": "Scrolled to element with reference: ref_35\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#batch\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significantly faster. Batch your next sequence of clicks, types, navigations, and screenshot",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify(document.getElementById(\"far\").getBoundingClientRect().top) + '@@'",
+            "tabId": 46544415
+          },
+          "ms": 6,
+          "ok": true,
+          "text": "@@789.4921875@@\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#batch\")",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify(window.innerHeight) + '@@'",
+            "tabId": 46544415
+          },
+          "ms": 5,
+          "ok": true,
+          "text": "@@827@@\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#batch\")",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify((window.scrollTo(0, 0), 0)) + '@@'",
+            "tabId": 46544415
+          },
+          "ms": 6,
+          "ok": true,
+          "text": "@@0@@\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#batch\")",
+          "images": []
+        },
+        {
+          "tool": "computer",
+          "args": {
+            "action": "hover",
+            "ref": "ref_8",
+            "tabId": 46544415
+          },
+          "ms": 68,
+          "ok": true,
+          "text": "Hovered over element ref_8\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#batch\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significantly faster. Batch your next sequence of clicks, types, navigations, and screenshots together.</sys",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify(document.getElementById(\"hover\").dataset.hovered) + '@@'",
+            "tabId": 46544415
+          },
+          "ms": 5,
+          "ok": true,
+          "text": "@@\"1\"@@\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#batch\")",
+          "images": []
+        },
+        {
+          "tool": "computer",
+          "args": {
+            "action": "screenshot",
+            "tabId": 46544415
+          },
+          "ms": 165,
+          "ok": true,
+          "text": "Successfully captured screenshot (1485x812, jpeg) - ID: ss_6785rccub\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#batch\")",
+          "images": [
+            {
+              "media": "image/jpeg",
+              "bytes": 27246
+            }
+          ]
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify([\"drag\", \"drop\"].map((id) => { const r = document.getElementById(id).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })) + '@@'",
+            "tabId": 46544415
+          },
+          "ms": 6,
+          "ok": true,
+          "text": "@@[[71,289.1953125],[108,350.9921875]]@@\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#batch\")",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify(window.innerWidth) + '@@'",
+            "tabId": 46544415
+          },
+          "ms": 6,
+          "ok": true,
+          "text": "@@1512@@\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#batch\")",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify(window.innerWidth) + '@@'",
+            "tabId": 46544415
+          },
+          "ms": 5,
+          "ok": true,
+          "text": "@@1512@@\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#batch\")",
+          "images": []
+        },
+        {
+          "tool": "computer",
+          "args": {
+            "action": "left_click_drag",
+            "start_coordinate": [
+              70,
+              284
+            ],
+            "coordinate": [
+              106,
+              345
+            ],
+            "tabId": 46544415
+          },
+          "ms": 117,
+          "ok": true,
+          "text": "Dragged from (70, 284) to (106, 345)\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#batch\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significantly faster. Batch your next sequence of clicks, types, navigations, and screenshots toge",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify(document.getElementById(\"drop\").textContent) + '@@'",
+            "tabId": 46544415
+          },
+          "ms": 7,
+          "ok": true,
+          "text": "@@\"dropped\"@@\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#batch\")",
+          "images": []
+        }
+      ],
+      "notes": [
+        "resize_window: skipped: the tab lives in the operator's window in background mode; zoom: pass; scroll: pass; scroll_to: pass; hover: pass; drag: pass"
+      ],
+      "sub": {
+        "resize_window": "skipped: the tab lives in the operator's window in background mode",
+        "zoom": "pass",
+        "scroll": "pass",
+        "scroll_to": "pass",
+        "hover": "pass",
+        "drag": "pass"
+      },
+      "wall_ms": 1149,
+      "tool_calls": 21,
+      "permission_prompts": 21,
+      "permission_log": [
+        "permission ALLOW execute_javascript http://127.0.0.1:8899/#batch 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW read_page_content http://127.0.0.1:8899/#batch 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW read_page_content http://127.0.0.1:8899/#batch 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW read_page_content http://127.0.0.1:8899/#batch 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript http://127.0.0.1:8899/#batch 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript http://127.0.0.1:8899/#batch 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW read_page_content http://127.0.0.1:8899/#batch 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript http://127.0.0.1:8899/#batch 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW read_page_content http://127.0.0.1:8899/#batch 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW read_page_content http://127.0.0.1:8899/#batch 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript http://127.0.0.1:8899/#batch 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript http://127.0.0.1:8899/#batch 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript http://127.0.0.1:8899/#batch 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW read_page_content http://127.0.0.1:8899/#batch 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript http://127.0.0.1:8899/#batch 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW read_page_content http://127.0.0.1:8899/#batch 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript http://127.0.0.1:8899/#batch 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript http://127.0.0.1:8899/#batch 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript http://127.0.0.1:8899/#batch 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW click http://127.0.0.1:8899/#batch 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript http://127.0.0.1:8899/#batch 40d784c3-f269-48ae-803a-c38e32aaa6b4"
+      ]
+    },
+    {
+      "id": 15,
+      "name": "upload_image / file_upload with the fixture PNG",
+      "isolates": "file paths",
+      "verdict": "pass",
+      "calls": [
+        {
+          "tool": "read_page",
+          "args": {
+            "tabId": 46544415,
+            "filter": "interactive"
+          },
+          "ms": 58,
+          "ok": true,
+          "text": "textbox [ref_1]\ntextbox [ref_2]\ncombobox \"Red\" [ref_3]\n option \"Red\" (selected) value=\"red\"\n option \"Green\" value=\"green\"\n option \"Blue\" value=\"blue\"\ncheckbox \"on\" [ref_4] type=\"checkbox\"\nbutton \"Submit order\" [ref_5] type=\"submit\"\nbutton \"Change hash\" [ref_6] type=\"button\"\nbutton \"Log error and fetch\" [ref_7] type=\"button\"\nbutton \"Hover target\" [ref_8]\nbutton \"Drag source\" [ref_9]\nbutton \"Upload ",
+          "images": []
+        },
+        {
+          "tool": "file_upload",
+          "args": {
+            "ref": "ref_10",
+            "tabId": 46544415,
+            "files": [
+              {
+                "name": "pixel.png",
+                "mimeType": "image/png",
+                "bytes": 70
+              }
+            ]
+          },
+          "ms": 7,
+          "ok": true,
+          "text": "Uploaded 1 file(s) to file input: pixel.png (0 KB total)\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#batch\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significantly faster. Batch your next sequence of clicks, types, navigations, ",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify(document.getElementById(\"file1\").files[0]?.name) + '@@'",
+            "tabId": 46544415
+          },
+          "ms": 5,
+          "ok": true,
+          "text": "@@\"pixel.png\"@@\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#batch\")",
+          "images": []
+        },
+        {
+          "tool": "computer",
+          "args": {
+            "action": "screenshot",
+            "tabId": 46544415
+          },
+          "ms": 161,
+          "ok": true,
+          "text": "Successfully captured screenshot (1485x812, jpeg) - ID: ss_7158n3tc9\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#batch\")",
+          "images": [
+            {
+              "media": "image/jpeg",
+              "bytes": 26806
+            }
+          ]
+        },
+        {
+          "tool": "upload_image",
+          "args": {
+            "imageId": "ss_7158n3tc9",
+            "ref": "ref_11",
+            "tabId": 46544415,
+            "filename": "shot.png"
+          },
+          "ms": 9,
+          "ok": true,
+          "text": "Successfully uploaded image \"shot.png\" (26KB) to file input\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#batch\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significantly faster. Batch your next sequence of clicks, types, navigation",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify(document.getElementById(\"file2\").files.length) + '@@'",
+            "tabId": 46544415
+          },
+          "ms": 7,
+          "ok": true,
+          "text": "@@1@@\n\n\nTab Context:\n- Executed on tabId: 46544415\n- Available tabs:\n  • tabId 46544415: \"CCB benchmark fixture\" (\"http://127.0.0.1:8899/#batch\")",
+          "images": []
+        }
+      ],
+      "notes": [
+        "file_upload: pass; upload_image: pass"
+      ],
+      "sub": {
+        "file_upload": "pass",
+        "upload_image": "pass"
+      },
+      "wall_ms": 247,
+      "tool_calls": 6,
+      "permission_prompts": 6,
+      "permission_log": [
+        "permission ALLOW read_page_content http://127.0.0.1:8899/#batch 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW upload_image http://127.0.0.1:8899/#batch 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript http://127.0.0.1:8899/#batch 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW read_page_content http://127.0.0.1:8899/#batch 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW upload_image http://127.0.0.1:8899/#batch 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript http://127.0.0.1:8899/#batch 40d784c3-f269-48ae-803a-c38e32aaa6b4"
+      ]
+    }
+  ]
+}

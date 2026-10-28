@@ -22,6 +22,7 @@ import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
 import { WebSocketServer } from 'ws';
+import { loadFindConfig, runBatch, runFind } from './local-tools.mjs';
 
 const STATE_DIR = process.env.CCB_STATE_DIR || path.join(os.homedir(), '.claude-chrome-bridge');
 const ALLOW_FILE = path.join(STATE_DIR, 'allow.json');
@@ -250,6 +251,19 @@ function runTool(tool, args = {}, timeoutMs = TOOL_TIMEOUT_MS, device, sessionSc
   });
 }
 
+// find and browser_batch can't work inside the extension in local mode (no
+// inference client; an empty grant store), so the bridge runs them itself on
+// top of the other tools. Everything else goes straight to the extension.
+function dispatch(tool, args, timeoutMs, device, sessionScope) {
+  const extension = (t, a) => runTool(t, a, timeoutMs, device, sessionScope);
+  if (tool === 'find') return runFind(extension, args, loadFindConfig(STATE_DIR), log);
+  if (tool === 'browser_batch') {
+    log('browser_batch', `${Array.isArray(args.actions) ? args.actions.length : 0} actions, run by the bridge`);
+    return runBatch((t, a) => dispatch(t, a, timeoutMs, device, sessionScope), args.actions);
+  }
+  return extension(tool, args);
+}
+
 // ---------------------------------------------------------------- HTTP API
 function readBody(req, limit = 1 << 20) {
   return new Promise((resolve, reject) => {
@@ -318,7 +332,7 @@ const httpServer = http.createServer(async (req, res) => {
       }
       const sessionScope = scope && { sessionId: scope.sessionId, displayName: String(scope.displayName || 'Claude (local bridge)') };
       try {
-        const result = await runTool(body.tool, body.args || {}, body.timeout_ms || TOOL_TIMEOUT_MS, body.device_id, sessionScope);
+        const result = await dispatch(body.tool, body.args || {}, body.timeout_ms || TOOL_TIMEOUT_MS, body.device_id, sessionScope);
         return json(res, 200, { ok: !result.is_error && !result.error, result });
       } catch (err) {
         return json(res, 200, { ok: false, error: err.message });

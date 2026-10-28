@@ -239,8 +239,18 @@ Not yet exercised (same code path, unverified): `form_input`, `type`, `key`, `ho
 
 These are structural, not bugs — each one is a feature that lived on Anthropic's servers:
 
-- **`find` is LLM-backed.** It calls an inference service that isn't reachable in local mode, so it fails with `Anthropic client not available`. The CLI and the MCP adapter substitute a lexical scorer over the `read_page --interactive` snapshot. Semantic "find the login button" degrades to text matching.
-- **`browser_batch` pre-checks the extension's internal grant store**, which stays empty locally, so it refuses any prompt-gated action. The CLI and the MCP adapter detect `permission_required` and replay the list as standalone calls — working, but no longer one atomic batch.
+- **`find` is LLM-backed.** Inside the extension it asks Claude Haiku 4.5 (its `small_fast` model class) through the signed-in account, so in local mode it fails with `Anthropic client not available`. The bridge runs `find` itself instead: it reads the page's accessibility tree and asks the model configured in `~/.claude-chrome-bridge/find.json`. There are two engines:
+
+  ```json
+  {"engine": "claude-code", "model": "claude-haiku-5-5", "effort": "low"}
+  {"url": "http://host:8080/v1", "model": "name", "key_file": "/path/to/key"}
+  ```
+
+  - **`claude-code`** runs a one-shot `claude -p` on the Claude Code CLI's own login, so no API key is needed. Nothing is loaded but the model: no tools, MCP servers, settings, hooks or saved session. It runs with a clean environment in a neutral directory. Add `"claude_bin"` when `claude` isn't on the bridge's PATH.
+  - **The second form** is any OpenAI-compatible endpoint. Its key is read from `key_file`.
+
+  `CCB_FIND_ENGINE`, `CCB_FIND_URL`, `CCB_FIND_MODEL` and `CCB_FIND_KEY_FILE` override the file. Refs the page doesn't have are dropped. With no model configured, or when the model call fails, the bridge falls back to a keyword scorer. The result's last line says which engine answered. **The page's accessibility tree goes to that endpoint.**
+- **`browser_batch` pre-checks the extension's internal grant store**, which stays empty locally, so it refuses any prompt-gated action. The bridge runs batches itself: one call from the client, the actions in order over loopback, each checked against the allowlist. The output is in the official `[tool] output` format and stops at the first error.
 - **URL category blocking is off.** Patch 3 makes the hosted category lookup skip instead of failing closed, so Anthropic's malicious-site categories (`category1`/`category2`) are no longer enforced. Concretely, the official build refuses reddit.com and this one reaches it ([`docs/BENCHMARK.md`](docs/BENCHMARK.md)). The allowlist is the only gate.
 - **Plan approval (`follow_a_plan`) and per-site "always allow" grants** are not in the loop; the local allowlist is host-granular only.
 - **Account features are inert**: scheduled tasks and skills migration (need an org UUID), saved-prompt sync, claude.ai messaging, onboarding, the permissions page.
@@ -271,7 +281,8 @@ That is a bounded observation, not a proof — worth re-running yourself with th
 | `bridge/launch.mjs` | launches Chrome for Testing with the patched extension connected |
 | `bridge/cli.mjs` | CLI over every tool |
 | `bridge/mcp.mjs` | stdio MCP server for Claude Code over the same HTTP API |
-| `bridge/local-find.mjs` | the offline `find` scorer, shared by the CLI and the adapter |
+| `bridge/local-tools.mjs` | `find` (configured model, keyword fallback) and `browser_batch`, run by the bridge |
+| `bridge/local-find.mjs` | the keyword scorer `find` falls back to |
 | `bridge/selftest.mjs` | routing + adapter self-test with fake browsers on spare ports |
 | `bench/` | benchmark fixture and server, the arm-B suites (`arm-b.mjs`, `reddit-b.mjs`, shared `harness.mjs`), raw `results/` |
 | `docs/BENCHMARK.md` | official vs local, same browser: results and findings |

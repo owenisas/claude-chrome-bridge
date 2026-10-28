@@ -177,7 +177,7 @@ a bug report.
 4. **Install the forked build into the browser you'll benchmark in.** `chrome://extensions` → Developer mode → **Load unpacked** → `extension-patched/`. It appears as `Claude (local bridge)` with id `ioohpagdjalmcbkcmmbnbdjfokmjaodl`. The stock `Claude` extension can stay installed — that's the point of the fork. (If you ever rebuild without `--fork-id`, the ids collide again and you must disable the stock one.)
 5. **Keep the bridge running** whenever the patched extension is installed, or the extension sits there retrying with nothing to talk to. (A launchd agent under `~/Library/LaunchAgents/` is the tidy option; not set up.)
 6. **Harden the HTTP API** before pointing this at a daily-use profile: validate the `Host` header (DNS-rebinding gap, README "Security model") and consider a token on `/tool`.
-7. **Optional:** re-point `find` at the CLI's local scorer inside the extension, so it stops erroring with `Anthropic client not available`.
+7. ~~**Optional:** re-point `find`~~: **done differently, without a fifth patch.** The bridge runs `find` with the model in `~/.claude-chrome-bridge/find.json` and falls back to the keyword scorer. The model is currently Claude Haiku 5.5 through a one-shot `claude -p` on the Claude Code CLI login; the official extension uses Claude Haiku 4.5. The other engine is any OpenAI-compatible endpoint, such as EVO-X2 Qwen. It also runs `browser_batch` itself. The fixture is now 15/15 (`docs/BENCHMARK.md`, "Update").
 
 ## Open questions
 

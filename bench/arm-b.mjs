@@ -18,7 +18,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { localFind } from '../bridge/local-find.mjs';
 import { createRun, refOf, expect, BACKGROUND } from './harness.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -82,16 +81,13 @@ await task(2, 'read_page interactive: count refs, locate the submit button', 'sn
 });
 
 await task(3, 'find "submit button"', 'semantic find (expected to diverge)', async () => {
+  // run by the bridge: the configured model, or the keyword scorer when none
   const r = await call('find', { query: 'submit button', tabId: tab });
-  if (r.ok) {
-    expect(/Submit order|ref_/.test(r.fullText), 'find returned no match');
-    return 'pass';
-  }
-  expect(/Anthropic client not available/i.test(r.fullText), `find failed: ${r.error}`);
-  const hits = localFind(snap, 'submit button');
-  note(`extension find: "${r.error}"; local scorer top hit: ${hits[0]?.line || 'none'}`);
-  expect(/Submit order/.test(hits[0]?.line || ''), 'local scorer missed the submit button');
-  return 'degraded';
+  expect(r.ok, `find failed: ${r.error}`);
+  expect(/Submit order/.test(r.fullText.split('\n')[2] || ''), 'the submit button is not the top match');
+  const engine = /\(find: (.+)\)/.exec(r.fullText)?.[1] || '?';
+  note(`${r.fullText.split('\n')[2]} [${engine}, ${r.ms} ms]`);
+  return engine.startsWith('model') ? 'pass' : 'degraded';
 });
 
 await task(4, 'form_input fill, then computer type', 'the two input paths', async () => {
@@ -161,15 +157,10 @@ await task(12, 'browser_batch with a prompt-gated action', 'batch gating (expect
     { name: 'navigate', input: { url: `${FIXTURE}#batch`, tabId: tab } },
     { name: 'computer', input: { action: 'screenshot', tabId: tab } },
   ];
+  // run by the bridge in one call, each action checked against the allowlist
   const r = await call('browser_batch', { actions }, 120000);
-  if (r.ok) return 'pass';
-  expect(/permission_required/.test(r.fullText) || r.error_code === 'permission_required', `batch failed: ${r.error}`);
-  note(`batch refused (${r.error_code || 'permission_required'}); replayed standalone`);
-  for (const a of actions) {
-    const s = await call(a.name, a.input);
-    expect(s.ok, `replay of ${a.name} failed: ${s.error}`);
-  }
-  return 'degraded';
+  expect(r.ok, `batch failed: ${r.error}`);
+  expect(/\[navigate\]/.test(r.fullText) && r.images.length === 1, 'batch output incomplete');
 });
 
 await task(13, 'tabs_create_mcp / tabs_close_mcp lifecycle', 'tab grouping', async () => {

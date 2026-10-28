@@ -11,7 +11,6 @@
  * Run `node cli.mjs help` for the full command list.
  */
 import fs from 'node:fs';
-import { localFind } from './local-find.mjs';
 
 const API = process.env.CCB_API || 'http://127.0.0.1:8766';
 
@@ -225,22 +224,9 @@ try {
     case 'find': {
       const query = positional[1];
       if (!query) throw new Error('usage: find <query>');
-      // The extension's own `find` is LLM-backed (it asks Anthropic to match
-      // elements). In local-only mode there is no Anthropic client, so fall
-      // back to scoring the interactive read_page snapshot locally.
-      try {
-        const r = await tool('find', { query, tabId: num(flags.tab) });
-        printResult(r, flags);
-      } catch (err) {
-        if (!/Anthropic client not available/i.test(err.message)) throw err;
-        const snap = textOf(await tool('read_page', { filter: 'interactive', tabId: num(flags.tab), max_chars: 60000 }));
-        const hits = localFind(snap, query);
-        if (!hits.length) console.log(`no local match for "${query}" (extension find needs an Anthropic client)`);
-        else {
-          console.log(`local match for "${query}" (extension find needs an Anthropic client):`);
-          for (const h of hits) console.log(`  ${h.score.toFixed(1)}  ${h.line}`);
-        }
-      }
+      // run by the bridge: the configured find model, or a keyword score
+      const r = await tool('find', { query, tabId: num(flags.tab) });
+      printResult(r, flags);
       break;
     }
 
@@ -354,30 +340,9 @@ try {
       const file = positional[1];
       if (!file) throw new Error('usage: batch <file.json>');
       const actions = JSON.parse(fs.readFileSync(file, 'utf8'));
-      try {
-        const r = await tool('browser_batch', { actions }, 300000);
-        printResult(r, flags);
-      } catch (err) {
-        // The extension's own browser_batch refuses any action that needs a
-        // permission prompt (it pre-checks its internal grant store, which is
-        // empty in local mode). Replay the same list as standalone calls.
-        if (!/permission_required/.test(err.message)) throw err;
-        console.log('browser_batch needs a prompt — replaying actions standalone');
-        let done = 0;
-        for (const a of actions) {
-          const name = a.name || a.tool;
-          const input = a.input ?? a.args ?? {};
-          try {
-            const r = await tool(name, input, 300000);
-            const txt = textOf(r).split('\n')[0] || '(no output)';
-            console.log(`  ${++done}/${actions.length} ${name}: ${txt.slice(0, 120)}`);
-          } catch (e) {
-            console.error(`  ${done + 1}/${actions.length} ${name} FAILED: ${e.message.split('\n')[0]}`);
-            process.exitCode = 1;
-            break;
-          }
-        }
-      }
+      // run by the bridge, one action at a time, each checked against the allowlist
+      const r = await tool('browser_batch', { actions }, 300000);
+      printResult(r, flags);
       break;
     }
 

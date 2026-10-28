@@ -24,7 +24,6 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { localFind } from './local-find.mjs';
 
 const API = process.env.CCB_API || 'http://127.0.0.1:8766';
 const CLI = path.join(path.dirname(fileURLToPath(import.meta.url)), 'cli.mjs');
@@ -103,7 +102,7 @@ const TOOLS = [
   },
   {
     name: 'find',
-    description: 'Find elements by a natural-language description and return their refs. In local mode the match is a keyword score over the interactive snapshot, not a model.',
+    description: 'Find elements by a natural-language description and return their refs. The bridge asks the model configured in its find.json, or falls back to a keyword score; the last line says which.',
     inputSchema: { type: 'object', properties: { query: { type: 'string' }, tabId }, required: ['query', 'tabId'] },
   },
   {
@@ -187,7 +186,7 @@ const TOOLS = [
   },
   {
     name: 'browser_batch',
-    description: 'Run several tool calls in order, stopping at the first error. Each item is {name, input} with input shaped exactly as for the standalone tool. In local mode, a batch that needs a permission prompt is replayed as standalone calls.',
+    description: 'Run several tool calls in one round trip, in order, stopping at the first error. Each item is {name, input} with input shaped exactly as for the standalone tool. The bridge runs them, each checked against the allowlist.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -321,14 +320,6 @@ async function runTool(name, args = {}) {
 
   const body = await callExtension(name, args, SLOW_TOOLS.has(name) ? 300000 : undefined);
   if (body.ok) return { content: toMcp(blocksOf(body.result)) };
-
-  // The two tools that need Anthropic's service in the stock path get the same
-  // local fallbacks the CLI uses.
-  const msg = body.result ? textOf(blocksOf(body.result)) : body.error || '';
-  if (name === 'find' && /Anthropic client not available/i.test(msg)) return findLocally(args);
-  if (name === 'browser_batch' && (/permission_required/.test(msg) || body.result?.error_code === 'permission_required')) {
-    return replayBatch(args.actions);
-  }
   return failure(body);
 }
 
@@ -365,43 +356,6 @@ async function deniedHosts(toolUseId) {
   } catch {
     return [];
   }
-}
-
-async function findLocally(args) {
-  const query = String(args.query || '');
-  const body = await callExtension('read_page', { filter: 'interactive', tabId: args.tabId, max_chars: 60000 });
-  if (!body.ok) return failure(body);
-  const hits = localFind(textOf(blocksOf(body.result)), query);
-  if (!hits.length) {
-    return ok(`No local match for "${query}". (The extension's find needs Anthropic's service, which local mode does not use.) Try read_page with filter "interactive".`);
-  }
-  return ok(
-    `Local keyword match for "${query}" (the extension's find needs Anthropic's service, which local mode does not use):\n` +
-    hits.map((h) => `${h.score.toFixed(1)}  ${h.line}`).join('\n'),
-  );
-}
-
-// The extension's browser_batch pre-checks its internal grant store, which
-// stays empty in local mode, so it refuses any prompt-gated action. Replaying
-// the list standalone sends each prompt to the bridge's allowlist instead.
-async function replayBatch(actions) {
-  if (!Array.isArray(actions) || !actions.length) return fail('browser_batch: actions must be a non-empty array');
-  const content = [text('browser_batch needs a permission prompt in local mode; ran the actions one at a time.')];
-  for (let i = 0; i < actions.length; i++) {
-    const name = actions[i]?.name;
-    if (name === 'browser_batch') {
-      content.push(text(`actions[${i}]: browser_batch cannot be nested`));
-      return { content, isError: true };
-    }
-    let r;
-    try { r = await runTool(name, actions[i]?.input ?? {}); } catch (err) { r = fail(err.message); }
-    content.push(text(`[${i + 1}/${actions.length}] ${name}`), ...r.content);
-    if (r.isError) {
-      content.push(text(`Stopped at actions[${i}]; ${actions.length - i - 1} not run.`));
-      return { content, isError: true };
-    }
-  }
-  return { content };
 }
 
 const MIME = {

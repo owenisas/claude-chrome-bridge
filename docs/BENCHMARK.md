@@ -5,11 +5,11 @@
 Same browser, same extension version, two ways in. The question was whether the
 local bridge is a real substitute for the official integration or a degraded copy.
 
-**Short answer:** on a controlled page it is close to a substitute. 13 of 15 tasks
-pass, and the two that don't are the two predicted in advance (`find`,
-`browser_batch`). On a real site the bigger difference is policy, not capability.
-The official build refused Reddit outright under Anthropic's URL-category check.
-The local build has no such check: the operator's allowlist is its only gate.
+**Short answer:** on a controlled page it is now a substitute.
+- **First run:** 13 of 15 tasks passed, and the two that didn't were the two predicted in advance (`find`, `browser_batch`).
+- **After the fix:** both now run inside the bridge (see [Update](#update-find-and-browser_batch-run-by-the-bridge)), and the local path passes all 15.
+
+On a real site the bigger difference is policy, not capability. The official build refused Reddit outright under Anthropic's URL-category check. The local build has no such check: the operator's allowlist is its only gate.
 
 ## Setup
 
@@ -53,6 +53,23 @@ the bridge round trip with no agent in the loop.
 - **Task 11:** both arms "pass", but they demonstrate different permission models. Arm A allowed the hop to `localhost` with no prompt, because the session was in bypass mode. Arm B's allowlist refused it, because `localhost` wasn't listed.
 - **Task 12:** the official batch ran navigate and screenshot in one call. Locally, the extension refuses any batch containing a gated action (`batch_permission_required`), so the bridge replays it as standalone calls.
 - **Task 14, foreground run:** `resize_window` returned success but the window stayed 1200 px wide, because the operator's Chrome was in full screen. In background mode the agent's tab lives in the operator's window, so resizing is skipped on purpose.
+
+### Update: find and browser_batch run by the bridge
+
+Neither tool can work inside the extension on the relay path, so the bridge now runs both itself (`bridge/local-tools.mjs`):
+- **`find`** reads the accessibility tree and asks the model configured in `~/.claude-chrome-bridge/find.json`. The official extension uses Claude Haiku 4.5 for this. The bridge was run twice: with Qwen 3.8 Flash Next on the operator's EVO-X2, then with Claude Haiku 5.5 through a one-shot `claude -p` on the Claude Code login (the current setting).
+- **`browser_batch`** runs the actions in order, each through the allowlist, in one call.
+
+Re-run in the same Chrome, background mode (`arm-b-…T11-52-17-849Z.json` with EVO Qwen, `arm-b-…T11-56-14-982Z.json` with Haiku 5.5; both 15/15):
+
+| # | Task | Before | After |
+|---|---|---|---|
+| 3 | `find "submit button"` | degraded · keyword scorer, 7 ms | **pass** · `ref_5: button "Submit order"` with a reason: 3479 ms via EVO Qwen, 3054 ms via Claude Haiku 5.5 (`claude -p`) |
+| 12 | `browser_batch` with a gated action | degraded · refused, replayed as 3 calls | **pass** · 1 call, 533 ms |
+| | **Fixture total** | 13 pass, 2 degraded | **15 pass** · 61 calls |
+
+- **Latency.** The model-backed `find` takes about 3 s, against 7 ms for the keyword scorer. With Haiku 5.5, about 1 s of that is the API call; the rest is the CLI starting up (2.5 s for the CLI run in a standalone test). The official Haiku call wasn't measured.
+- **Reddit's search box is still out of reach.** It is missing from the accessibility tree, and no model can return a ref the tree doesn't have. That task wasn't re-run.
 
 ## Real site: Reddit, read-only (10 tasks)
 
