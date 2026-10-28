@@ -169,13 +169,15 @@ peer per connected browser. With one browser attached, commands just work; with
 several, name the one you mean:
 
 ```bash
-node bridge/cli.mjs status                    # lists every connected browser
-node bridge/cli.mjs tabs --device a2335e1e     # device_id or an unambiguous prefix
-CCB_DEVICE=a2335e1e node bridge/cli.mjs tabs   # or via the environment
+node bridge/cli.mjs status                        # every connected browser, labelled by profile
+node bridge/cli.mjs tabs --device parafield.ai     # a profile name ("Profile 32" or "Chrome/parafield.ai" work too)
+node bridge/cli.mjs tabs --device a2335e1e         # or a device_id / unambiguous prefix
+CCB_DEVICE=parafield.ai node bridge/cli.mjs tabs   # or via the environment
 ```
 
-A `device_id` is generated per browser profile, so it stays stable across
-restarts of the same profile.
+The extension sends no name of its own unless one was set in its UI, so each browser is labelled with its **profile**: browser, profile name and directory, e.g. `parafield.ai (Chrome, Profile 32)`. The extension keeps its device id in that profile's extension storage. The label comes from finding the profile whose storage holds the id and reading the profile's name from the browser's `Local State`.
+- **Where the lookup runs.** macOS keeps a launchd-run process out of Chrome's folder (`EPERM`), so with the bridge as a LaunchAgent the lookup runs in the clients (the MCP adapter, the CLI), which can read it.
+- **Ids versus names.** A `device_id` is generated per install, so it changes if the extension is reinstalled. A profile name doesn't.
 
 ---
 
@@ -203,7 +205,19 @@ plus `CCB_UPLOAD_ROOTS`.
 
 Each MCP session works in its own background tab group: an inactive tab in the
 browser's last-focused window, like the stock integration, instead of a new
-focused window. The CLI does the same when `CCB_SESSION=<id>` is set.
+focused window. The CLI uses `CCB_SESSION=<id>` when set. **Any call that names
+no session gets the bridge's default group**, `Claude (local bridge)`.
+
+Without a session, the extension's legacy path opens a new, focused window for
+every tab group it creates, titled "Claude (MCP)". Chrome also keeps a saved
+"Claude (MCP)" chip in the bookmarks bar for each of those groups, long after it
+closes. The extension has no API for deleting saved groups, so remove old chips
+by hand (right-click, then **Delete group**). Send `session_scope: false` to
+`/tool` only when you want the legacy window.
+
+In the MCP adapter, `list_connected_browsers` labels each browser with its
+profile, and `select_browser` accepts a profile name. `CCB_DEVICE` in the server's
+`env` picks a default, e.g. `claude mcp add -s user -e CCB_DEVICE=parafield.ai …`.
 
 `node bridge/selftest.mjs` checks the routing and the adapter against fake
 browsers on spare ports, without touching a live bridge.
@@ -269,7 +283,7 @@ That is a bounded observation, not a proof — worth re-running yourself with th
 
 - Both servers bind loopback only (`127.0.0.1` and `::1`).
 - No account, token, or Anthropic endpoint is involved in the tool path.
-- Every `permission_request` is answered from `~/.claude-chrome-bridge/allow.json`: a host is allowed when it equals a listed domain or is a subdomain of one. Empty by default → deny everything until granted.
+- Every `permission_request` is answered from `~/.claude-chrome-bridge/allow.json`: a host is allowed when it equals a listed domain or is a subdomain of one. Empty by default → deny everything until granted. `"allowAll": true` in that file allows every host; that's the operator's call, and the bridge then applies no site gate at all.
 - Denials are logged to `~/.claude-chrome-bridge/bridge.log` and exposed via `GET /approvals`, so a human can review what the agent tried to reach.
 
 **Known gap:** the HTTP API does not validate the `Host` header, so a page using DNS rebinding could reach it. Fix that (Host check + a token) before pointing this at a browser profile you care about.

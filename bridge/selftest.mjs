@@ -27,6 +27,17 @@ fs.mkdirSync(WORK);
 fs.writeFileSync(path.join(STATE, 'allow.json'), JSON.stringify({ domains: ['allowed.test'] }));
 fs.writeFileSync(path.join(WORK, 'pixel.png'), Buffer.from('89504e470d0a1a0a', 'hex'));
 
+// a fake Chrome user-data dir: two profiles whose extension storage holds the
+// fake browsers' device ids, so the bridge can name them
+const CHROME = path.join(TMP, 'chrome');
+fs.mkdirSync(CHROME);
+fs.writeFileSync(path.join(CHROME, 'Local State'), JSON.stringify({ profile: { info_cache: { 'Profile 3': { name: 'Work' }, 'Profile 7': { name: 'Personal' } } } }));
+for (const [dir, id] of [['Profile 3', 'aaaa1111-daily'], ['Profile 7', 'bbbb2222-agent']]) {
+  const store = path.join(CHROME, dir, 'Local Extension Settings', 'ioohpagdjalmcbkcmmbnbdjfokmjaodl');
+  fs.mkdirSync(store, { recursive: true });
+  fs.writeFileSync(path.join(store, '000003.log'), Buffer.concat([Buffer.from([1, 2, 3]), Buffer.from(`bridgeDeviceId"${id}"`)]));
+}
+
 let failures = 0;
 function check(name, cond, detail) {
   if (cond) console.log(`  ok    ${name}`);
@@ -149,6 +160,7 @@ const server = spawn(process.execPath, [path.join(HERE, 'server.mjs')], {
     CCB_FIND_URL: `http://127.0.0.1:${MODEL_PORT}/v1`,
     CCB_FIND_MODEL: 'fake-find-model',
     CCB_FIND_KEY_FILE: path.join(TMP, 'model.key'),
+    CCB_PROFILE_ROOTS: `TestChrome=${CHROME}`,
   },
   stdio: ['ignore', 'ignore', 'inherit'],
 });
@@ -180,6 +192,25 @@ try {
   check('device_id routes to that browser', textOf(toAgent.result?.content) === 'peer:bbbb2222-agent', toAgent);
   const byPrefix = await tool('tabs_context_mcp', {}, 'aaaa');
   check('device_id prefix routes too', textOf(byPrefix.result?.content) === 'peer:aaaa1111-daily', byPrefix);
+  st = await api('/status');
+  const labels = Object.fromEntries(st.extensions.map((e) => [e.device_id, e.label]));
+  check('each browser is labelled with its profile', labels['aaaa1111-daily'] === 'owenisas-MacBook-Pro' && labels['bbbb2222-agent'] === 'Personal (TestChrome, Profile 7)'
+    && st.extensions.find((e) => e.device_id === 'aaaa1111-daily')?.profile?.name === 'Work', st.extensions);
+  const byName = await tool('tabs_context_mcp', {}, 'Personal');
+  check('a profile name routes to that browser', textOf(byName.result?.content) === 'peer:bbbb2222-agent', byName);
+  const byDir = await tool('tabs_context_mcp', {}, 'testchrome/work');
+  check('browser/profile works too, case-insensitively', textOf(byDir.result?.content) === 'peer:aaaa1111-daily', byDir);
+  const callsBefore = agent.calls.length;
+  await tool('tabs_context_mcp', {}, 'bbbb');
+  check('a call without a session gets the default session group', agent.calls.at(-1)?.session_scope?.sessionId === 'claude-chrome-bridge' && agent.calls.length === callsBefore + 1, agent.calls.at(-1));
+  await api('/tool', { method: 'POST', body: JSON.stringify({ tool: 'tabs_context_mcp', device_id: 'bbbb', session_scope: false }) });
+  check('session_scope: false asks for the legacy window path', agent.calls.at(-1)?.session_scope === undefined, agent.calls.at(-1));
+  // the clients do the same lookup when the bridge can't (a LaunchAgent can't read Chrome's folder)
+  process.env.CCB_PROFILE_ROOTS = `TestChrome=${CHROME}`;
+  const { withProfiles, resolveDevice } = await import('./profiles.mjs');
+  const bare = [{ device_id: 'aaaa1111-daily' }, { device_id: 'bbbb2222-agent' }];
+  check('clients label browsers the bridge left unnamed', withProfiles(bare)[1].label === 'Personal (TestChrome, Profile 7)', withProfiles(bare));
+  check('clients turn a profile name into its device_id', resolveDevice(bare, 'work') === 'aaaa1111-daily' && resolveDevice(bare, 'bbbb') === 'bbbb' && resolveDevice(bare, 'nope') === 'nope');
   const unknown = await tool('tabs_context_mcp', {}, 'zzzz');
   check('unknown device_id is an error', !unknown.ok && /no connected browser/.test(unknown.error), unknown);
 
@@ -285,11 +316,14 @@ process.stdin.on('end', () => {
   console.log('mcp.mjs: tools');
   let r = await mcp.call('list_connected_browsers');
   let listed = JSON.parse(r.content[0].text);
-  check('list_connected_browsers shows both, none in use yet', listed.browsers.length === 2 && !listed.browsers.some((b) => b.inUse) && /ask the user/.test(listed.note), listed);
+  check('list_connected_browsers shows both, none in use yet', listed.browsers.length === 2 && !listed.browsers.some((b) => b.inUse) && /Ask the user/.test(listed.note), listed);
+  check('list_connected_browsers names each browser by profile', listed.browsers.some((b) => b.displayName === 'Personal (TestChrome, Profile 7)' && b.profile?.dir === 'Profile 7'), listed.browsers);
   r = await mcp.call('tabs_context_mcp', { createIfEmpty: false });
   check('two browsers, none selected: isError with a select_browser hint', r.isError && /select_browser/.test(textOf(r.content)), r);
   r = await mcp.call('select_browser', { deviceId: 'nope' });
   check('select_browser rejects an unknown deviceId', r.isError, r);
+  r = await mcp.call('select_browser', { deviceId: 'Work' });
+  check('select_browser accepts a profile name', !r.isError && /aaaa1111-daily/.test(textOf(r.content)), r);
   r = await mcp.call('select_browser', { deviceId: 'bbbb2222-agent' });
   check('select_browser accepts a connected deviceId', !r.isError, r);
   listed = JSON.parse((await mcp.call('list_connected_browsers')).content[0].text);

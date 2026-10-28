@@ -180,6 +180,9 @@ a bug report.
    - **Adapter:** registered at **user scope** (`claude mcp add -s user claude-chrome -- <node> <repo>/bridge/mcp.mjs`), so every project in the CLI and in the desktop app's Code tab gets it. Its server instructions tell agents to prefer it over `claude-in-chrome` when both are present.
    - **Browsers:** only the operator's daily Chrome (the forked build) is attached; the `launch.mjs` test browser is stopped.
    - **Official integration:** still enabled in the desktop app, which only the operator can change. Disabling the stock `Claude` extension in `chrome://extensions` takes it out of play everywhere.
+- **Fixed 2026-10-28: several profiles were indistinguishable, and saved "Claude (MCP)" chips piled up.**
+  - **Profiles:** each browser is now labelled with its profile (`bridge/profiles.mjs`: the device id is found in that profile's extension storage). Clients resolve profile names to device ids, because a launchd-run bridge gets `EPERM` on Chrome's folder.
+  - **Chips:** calls without a session now use the bridge's default session group, so the legacy new-window path, and the saved chip it leaves, is opt-in (`session_scope: false`). The existing chips have to be deleted by hand in Chrome.
 6. **Harden the HTTP API** before pointing this at a daily-use profile: validate the `Host` header (DNS-rebinding gap, README "Security model") and consider a token on `/tool`.
 7. ~~**Optional:** re-point `find`~~: **done differently, without a fifth patch.** The bridge runs `find` with the model in `~/.claude-chrome-bridge/find.json` and falls back to the keyword scorer. The model is currently Claude Haiku 5.5 through a one-shot `claude -p` on the Claude Code CLI login; the official extension uses Claude Haiku 4.5. The other engine is any OpenAI-compatible endpoint, such as EVO-X2 Qwen. It also runs `browser_batch` itself. The fixture is now 15/15 (`docs/BENCHMARK.md`, "Update").
 

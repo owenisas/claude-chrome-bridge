@@ -14,7 +14,7 @@
  *
  * Env:
  *   CCB_API           bridge URL (default http://127.0.0.1:8766)
- *   CCB_DEVICE        preselect a browser by device_id
+ *   CCB_DEVICE        preselect a browser by device_id or profile name
  *   CCB_SESSION_NAME  title of this session's tab group
  *   CCB_UPLOAD_ROOTS  extra directories file_upload may read, ':'-separated
  *
@@ -24,6 +24,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveDevice, withProfiles } from './profiles.mjs';
 
 const API = process.env.CCB_API || 'http://127.0.0.1:8766';
 const CLI = path.join(path.dirname(fileURLToPath(import.meta.url)), 'cli.mjs');
@@ -254,8 +255,8 @@ const TOOLS = [
   },
   {
     name: 'select_browser',
-    description: 'Send this session\'s tool calls to one connected browser, by deviceId from list_connected_browsers.',
-    inputSchema: { type: 'object', properties: { deviceId: { type: 'string' } }, required: ['deviceId'] },
+    description: 'Send this session\'s tool calls to one connected browser: a deviceId from list_connected_browsers, or its profile name.',
+    inputSchema: { type: 'object', properties: { deviceId: { type: 'string', description: 'deviceId, or a profile name such as "parafield.ai" or "Profile 32".' } }, required: ['deviceId'] },
   },
 ];
 
@@ -274,10 +275,22 @@ async function api(p, opts = {}) {
   return body;
 }
 
-function callExtension(name, args, timeoutMs) {
+// A profile name chosen with CCB_DEVICE or select_browser is turned into a
+// device_id here: the bridge, run by launchd, can't read Chrome's profiles.
+let resolved = { at: 0, for: undefined, id: undefined };
+async function deviceId() {
+  if (!device) return undefined;
+  if (resolved.for === device && Date.now() - resolved.at < 5000) return resolved.id;
+  let id = device;
+  try { id = resolveDevice((await api('/status')).extensions, device); } catch { /* the call itself will report it */ }
+  resolved = { at: Date.now(), for: device, id };
+  return id;
+}
+
+async function callExtension(name, args, timeoutMs) {
   return api('/tool', {
     method: 'POST',
-    body: JSON.stringify({ tool: name, args, timeout_ms: timeoutMs, device_id: device, session_scope: SESSION_SCOPE }),
+    body: JSON.stringify({ tool: name, args, timeout_ms: timeoutMs, device_id: await deviceId(), session_scope: SESSION_SCOPE }),
   });
 }
 
@@ -389,20 +402,22 @@ function withFiles(args) {
 
 async function listBrowsers() {
   const st = await api('/status');
-  const list = st.extensions ?? (st.extension?.connected ? [st.extension] : []);
+  const list = withProfiles(st.extensions ?? (st.extension?.connected ? [st.extension] : []));
+  const current = await deviceId();
   const browsers = list.map((e) => ({
     deviceId: e.device_id,
-    displayName: e.display_name || null,
+    displayName: e.label || e.display_name || null,
+    profile: e.profile || null,
     osPlatform: e.os_platform,
     extensionVersion: e.extension_version,
     connectedAt: e.connected_at,
-    inUse: device ? e.device_id === device : list.length === 1,
+    inUse: device ? e.device_id === current : list.length === 1,
   }));
   const out = { browsers };
   if (!st.extensions) out.note = 'This bridge predates multi-browser routing; the operator should restart bridge/server.mjs before selecting a browser.';
   else if (!list.length) out.note = 'No browser is connected to the bridge.';
   else if (device && !browsers.some((b) => b.inUse)) out.note = `The selected browser (${device}) is not connected.`;
-  else if (!device && list.length > 1) out.note = 'Several browsers are connected; ask the user which one, then call select_browser.';
+  else if (!device && list.length > 1) out.note = 'Several browsers are connected; each is labelled with its browser profile. Ask the user which one, then call select_browser.';
   return ok(JSON.stringify(out, null, 2));
 }
 
@@ -410,10 +425,17 @@ async function selectBrowser(args) {
   const id = String(args.deviceId || '');
   const st = await api('/status');
   if (!st.extensions) return fail('This bridge predates multi-browser routing; the operator should restart bridge/server.mjs first.');
-  const hit = st.extensions.find((e) => e.device_id === id);
-  if (!hit) return fail(`No connected browser with deviceId "${id}". Call list_connected_browsers.`);
-  device = id;
-  return ok(`Selected ${id} (${hit.display_name || 'unnamed'}). This session's tool calls now go to that browser.`);
+  // a profile name works too: "parafield.ai", "Profile 32", "Chrome/parafield.ai"
+  const named = (e) => e.profile && [e.profile.name, e.profile.dir, `${e.profile.browser}/${e.profile.name}`]
+    .some((v) => String(v).toLowerCase() === id.toLowerCase());
+  const extensions = withProfiles(st.extensions);
+  const exact = extensions.filter((e) => e.device_id === id);
+  const hits = exact.length ? exact : extensions.filter(named);
+  if (hits.length !== 1) {
+    return fail(hits.length ? `"${id}" matches ${hits.length} browsers; use a deviceId.` : `No connected browser with deviceId or profile "${id}". Call list_connected_browsers.`);
+  }
+  device = hits[0].device_id;
+  return ok(`Selected ${device} (${hits[0].label || 'unknown profile'}). This session's tool calls now go to that browser.`);
 }
 
 // ---------------------------------------------------------------- JSON-RPC over stdio
@@ -422,7 +444,7 @@ const INSTRUCTIONS = [
   'The operator prefers these tools: when the claude-in-chrome tools are also present, use these instead.',
   'Start with tabs_context_mcp (createIfEmpty: true) to get a tab id.',
   'Every site is gated by the operator\'s local allowlist. A "Permission denied" result means the host is not allowed: tell the user which host and let them decide. Never work around it.',
-  'If several browsers are connected, call list_connected_browsers, ask the user which one, then select_browser.',
+  'If several browsers are connected, call list_connected_browsers (each is labelled with its browser profile), ask the user which one, then select_browser.',
 ].join(' ');
 
 async function dispatch(method, params) {

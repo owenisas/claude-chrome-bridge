@@ -40,7 +40,8 @@ export const BACKGROUND = process.env.BENCH_FOREGROUND !== '1';
  * device: bridge device_id (or prefix); getTab: returns the tab the suite works in.
  */
 export function createRun({ device, getTab }) {
-  const sessionScope = BACKGROUND ? { sessionId: `ccb-bench-${Date.now()}`, displayName: 'ccb bench' } : undefined;
+  // false asks the bridge for the extension's legacy path explicitly
+  const sessionScope = BACKGROUND ? { sessionId: `ccb-bench-${Date.now()}`, displayName: 'ccb bench' } : false;
   const results = [];
   let cur = null;
 

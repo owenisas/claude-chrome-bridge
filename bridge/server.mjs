@@ -23,6 +23,7 @@ import os from 'node:os';
 import crypto from 'node:crypto';
 import { WebSocketServer } from 'ws';
 import { loadFindConfig, runBatch, runFind } from './local-tools.mjs';
+import { profileFor, profileLabel, profileMatches } from './profiles.mjs';
 
 const STATE_DIR = process.env.CCB_STATE_DIR || path.join(os.homedir(), '.claude-chrome-bridge');
 const ALLOW_FILE = path.join(STATE_DIR, 'allow.json');
@@ -30,6 +31,7 @@ const LOG_FILE = path.join(STATE_DIR, 'bridge.log');
 const WS_PORT = Number(process.env.CCB_WS_PORT || 8765);
 const HTTP_PORT = Number(process.env.CCB_HTTP_PORT || 8766);
 const TOOL_TIMEOUT_MS = 120000;
+const DEFAULT_SESSION = { sessionId: 'claude-chrome-bridge', displayName: 'Claude (local bridge)' };
 
 fs.mkdirSync(STATE_DIR, { recursive: true });
 
@@ -91,9 +93,12 @@ function rejectPendingFor(ws, reason) {
 }
 
 function peerInfo(p) {
+  const profile = profileFor(p.info.device_id);
   return {
     device_id: p.info.device_id,
     display_name: p.info.display_name,
+    profile,
+    label: p.info.display_name || profileLabel(profile) || null,
     dev_user_id: p.info.dev_user_id,
     extension_version: p.info.extension_version,
     os_platform: p.info.os_platform,
@@ -107,21 +112,25 @@ function peerList() {
 }
 
 // Never guess between browsers: with more than one connected, the caller must
-// say which, or an agent could end up acting in someone's daily profile.
+// say which, or an agent could end up acting in someone's daily profile. A
+// browser is named by device_id (or a prefix of it) or by its profile:
+// "parafield.ai", "Profile 32" or "Chrome/parafield.ai".
 function pickPeer(device) {
   const all = [...peers.entries()];
   if (!all.length) throw new Error('extension not connected');
   if (device) {
     const exact = all.filter(([, p]) => p.info.device_id === device);
-    const hits = exact.length ? exact : all.filter(([, p]) => String(p.info.device_id).startsWith(device));
+    const byPrefix = all.filter(([, p]) => String(p.info.device_id).startsWith(device));
+    const byProfile = all.filter(([, p]) => profileMatches(profileFor(p.info.device_id), device));
+    const hits = exact.length ? exact : byPrefix.length ? byPrefix : byProfile;
     if (hits.length === 1) return hits[0][0];
     throw new Error(hits.length
-      ? `device_id "${device}" matches ${hits.length} browsers; use more of it`
-      : `no connected browser with device_id "${device}"`);
+      ? `"${device}" matches ${hits.length} browsers; use more of a device_id`
+      : `no connected browser with device_id or profile "${device}"`);
   }
   if (all.length === 1) return all[0][0];
-  const ids = all.map(([, p]) => `${p.info.device_id} (${p.info.display_name || 'unnamed'})`).join(', ');
-  throw new Error(`${all.length} browsers connected: ${ids}. Pick one with device_id`);
+  const ids = all.map(([, p]) => `${p.info.device_id} (${p.info.display_name || profileLabel(profileFor(p.info.device_id)) || 'unknown profile'})`).join(', ');
+  throw new Error(`${all.length} browsers connected: ${ids}. Pick one with device_id or a profile name`);
 }
 
 // ---------------------------------------------------------------- extension protocol
@@ -137,6 +146,7 @@ function handleExtMessage(ws, raw) {
       peers.set(ws, { info: msg, connectedAt: Date.now() });
       log('extension connect', JSON.stringify({
         client_type: msg.client_type,
+        profile: profileLabel(profileFor(msg.device_id)),
         device_id: msg.device_id,
         dev_user_id: msg.dev_user_id,
         extension_version: msg.extension_version,
@@ -326,9 +336,13 @@ const httpServer = http.createServer(async (req, res) => {
       // file_upload carries base64 file bodies (up to 10 MB of files)
       const body = JSON.parse(await readBody(req, 24 << 20) || '{}');
       if (!body.tool) return json(res, 400, { error: 'tool required' });
-      const scope = body.session_scope;
-      if (scope !== undefined && (typeof scope?.sessionId !== 'string' || !scope.sessionId)) {
-        return json(res, 400, { error: 'session_scope needs a string sessionId' });
+      // Without a session the extension opens a new focused window per tab
+      // group, and Chrome keeps a saved "Claude (MCP)" chip for every group it
+      // ever made. So a call that names no session gets the bridge's default
+      // one; `session_scope: false` asks for the old window behaviour.
+      const scope = body.session_scope === undefined ? DEFAULT_SESSION : body.session_scope;
+      if (scope !== false && (typeof scope?.sessionId !== 'string' || !scope.sessionId)) {
+        return json(res, 400, { error: 'session_scope needs a string sessionId (or false for a new window)' });
       }
       const sessionScope = scope && { sessionId: scope.sessionId, displayName: String(scope.displayName || 'Claude (local bridge)') };
       try {

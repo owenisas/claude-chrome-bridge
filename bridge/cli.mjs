@@ -11,6 +11,7 @@
  * Run `node cli.mjs help` for the full command list.
  */
 import fs from 'node:fs';
+import { resolveDevice, withProfiles } from './profiles.mjs';
 
 const API = process.env.CCB_API || 'http://127.0.0.1:8766';
 
@@ -41,10 +42,11 @@ function usage() {
   batch <file.json>               browser_batch: [{"name":"click","input":{...}},...]
   raw <tool> <json-args>          escape hatch
 
-  --device <id>                   target one browser when several are connected
-                                  (device_id or a prefix, from status; or CCB_DEVICE)
-  CCB_SESSION=<id>                work in a background tab group for session <id>
-                                  instead of opening a focused window
+  --device <id>                   target one browser when several are connected:
+                                  device_id (or a prefix) or a profile name such as
+                                  "parafield.ai" (see status); or CCB_DEVICE
+  CCB_SESSION=<id>                use session <id>'s background tab group; without
+                                  it the bridge's shared default session is used
 `);
 }
 
@@ -91,13 +93,16 @@ function textOf(result) {
 }
 
 async function tool(name, args = {}, timeoutMs) {
+  // a profile name becomes a device_id here; the bridge may not be able to read profiles
+  const wanted = flags.device || process.env.CCB_DEVICE || undefined;
+  const device = wanted && resolveDevice((await api('/status')).extensions, wanted);
   const body = await api('/tool', {
     method: 'POST',
     body: JSON.stringify({
       tool: name,
       args,
       timeout_ms: timeoutMs,
-      device_id: flags.device || process.env.CCB_DEVICE || undefined,
+      device_id: device,
       // a session works in a background tab group instead of a focused window
       session_scope: process.env.CCB_SESSION ? { sessionId: process.env.CCB_SESSION, displayName: 'cli' } : undefined,
     }),
@@ -163,6 +168,7 @@ try {
 
     case 'status': {
       const s = await api('/status');
+      if (s.extensions) s.extensions = withProfiles(s.extensions);
       console.log(JSON.stringify(s, null, 2));
       break;
     }
