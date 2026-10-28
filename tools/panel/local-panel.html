@@ -7,6 +7,9 @@
   with the same data-theme/data-mode pair the stock panel uses, so the palette,
   the Anthropic Sans/Mono faces and the serif response face all come from the
   bundle rather than being approximated.
+
+  Both pickers are chip + menu rather than <select>, because a native select
+  renders the OS menu, which looks nothing like the original panel.
 -->
 <html lang="en" data-theme="claude" data-mode="dark">
 <head>
@@ -15,8 +18,6 @@
 <title>Claude in Chrome — local bridge</title>
 <!--CCB_STYLES-->
 <style>
-  :root { --ccb-gap: 10px; }
-
   * { box-sizing: border-box; }
 
   html, body { height: 100%; }
@@ -42,33 +43,56 @@
   .brand { display: flex; align-items: center; gap: 7px; min-width: 0; }
   .brand svg { flex: none; color: #d97757; }
   .brand .name { font-weight: 560; letter-spacing: -.01em; white-space: nowrap; }
-  .brand .where { color: hsl(var(--text-500)); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .spacer { flex: 1; }
   .dot { width: 7px; height: 7px; border-radius: 50%; background: hsl(var(--text-500)); flex: none; }
   .dot.on { background: #7fb069; }
   .dot.off { background: #e07a5f; }
 
-  /* small shared control look */
-  .ctl {
-    appearance: none; -webkit-appearance: none;
-    background: transparent; color: hsl(var(--text-300));
-    border: 1px solid hsl(var(--bg-400)); border-radius: 8px;
-    font: inherit; font-size: 12px; padding: 4px 8px; cursor: pointer;
-    max-width: 150px; text-overflow: ellipsis;
+  /* --------------------------------------------------------------- pickers */
+  .wrap { position: relative; display: inline-flex; min-width: 0; }
+  .picker {
+    appearance: none; border: 0; background: transparent; font: inherit;
+    color: hsl(var(--text-400)); cursor: pointer; border-radius: 8px;
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 3px 5px; max-width: 168px; min-width: 0;
   }
-  .ctl:hover { background: hsl(var(--bg-300)); color: hsl(var(--text-100)); }
-  .ctl:focus-visible { outline: none; border-color: hsl(var(--text-400)); }
-  .icon-btn { padding: 4px 7px; line-height: 1; }
-  select.ctl { padding-right: 6px; }
+  .picker:hover { background: hsl(var(--bg-300)); color: hsl(var(--text-100)); }
+  .picker[aria-expanded="true"] { background: hsl(var(--bg-300)); color: hsl(var(--text-100)); }
+  .picker:focus-visible { outline: none; box-shadow: 0 0 0 1.5px hsl(var(--text-500)); }
+  .picker .label { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .picker.composer-picker .label { font-size: 12.5px; }
+  .caret { flex: none; opacity: .75; }
+
+  .menu {
+    position: absolute; z-index: 20; min-width: 168px;
+    background: hsl(var(--bg-000));
+    border: 1px solid hsl(var(--bg-400));
+    border-radius: 12px; padding: 4px;
+    box-shadow: 0 10px 30px hsl(0 0% 0% / .45), 0 2px 6px hsl(0 0% 0% / .3);
+    display: flex; flex-direction: column; gap: 1px;
+  }
+  .menu[hidden] { display: none; }
+  .menu.up { bottom: calc(100% + 7px); left: 0; }
+  .menu.down { top: calc(100% + 7px); right: 0; }
+  .item {
+    display: flex; align-items: center; gap: 7px;
+    padding: 6px 8px; border-radius: 8px; cursor: pointer;
+    color: hsl(var(--text-300)); font-size: 13px; white-space: nowrap;
+    background: transparent; border: 0; font-family: inherit; text-align: left; width: 100%;
+  }
+  .item:hover, .item:focus-visible { background: hsl(var(--bg-300)); color: hsl(var(--text-100)); outline: none; }
+  .item[aria-selected="true"] { color: hsl(var(--text-100)); }
+  .item .check { flex: none; width: 12px; opacity: 0; color: hsl(var(--text-100)); }
+  .item[aria-selected="true"] .check { opacity: 1; }
+  .item .sub { color: hsl(var(--text-500)); font-size: 11px; margin-left: auto; }
 
   /* ------------------------------------------------------------------ meta */
   .meta {
     display: flex; gap: 8px; align-items: baseline;
     padding: 7px 12px; border-bottom: 1px solid hsl(var(--bg-400));
-    font-size: 12px; color: hsl(var(--text-500)); flex: none;
+    font-size: 12px; color: hsl(var(--text-500)); flex: none; flex-wrap: wrap;
   }
   .meta .k { color: hsl(var(--text-500)); min-width: 54px; }
-  .meta .v { color: hsl(var(--text-300)); }
   .chips { display: inline-flex; flex-wrap: wrap; gap: 4px; }
   .chip {
     border: 1px solid hsl(var(--bg-400)); border-radius: 999px;
@@ -81,7 +105,6 @@
   #log::-webkit-scrollbar { width: 8px; }
   #log::-webkit-scrollbar-thumb { background: hsl(var(--bg-400)); border-radius: 4px; }
 
-  .turn { display: flex; flex-direction: column; gap: 7px; }
   .me { align-self: flex-end; max-width: 88%; background: hsl(var(--bg-300));
         border-radius: 14px; padding: 7px 12px; white-space: pre-wrap; word-wrap: break-word; }
   .bot {
@@ -97,7 +120,6 @@
   .bot li { margin: 2px 0; }
   .note { align-self: center; text-align: center; color: hsl(var(--text-500)); font-size: 12px; max-width: 92%; }
   .tools { display: flex; flex-wrap: wrap; gap: 4px; }
-  .tools .chip { color: hsl(var(--text-400)); }
   .working { color: hsl(var(--text-500)); font-size: 12px; display: flex; align-items: center; gap: 6px; }
   .working::after {
     content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor;
@@ -126,16 +148,6 @@
   }
   #input::placeholder { color: hsl(var(--text-500)); }
   .row { display: flex; align-items: center; gap: 8px; }
-  .row .spacer { flex: 1; }
-  .model {
-    appearance: none; -webkit-appearance: none; border: 0; background: transparent;
-    color: hsl(var(--text-400)); font: inherit; font-size: 12px; cursor: pointer;
-    padding: 3px 18px 3px 6px; border-radius: 7px; max-width: 170px;
-    background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
-    background-position: calc(100% - 10px) 52%, calc(100% - 6px) 52%;
-    background-size: 4px 4px, 4px 4px; background-repeat: no-repeat;
-  }
-  .model:hover { color: hsl(var(--text-100)); background-color: hsl(var(--bg-300)); }
   .send {
     appearance: none; border: 0; cursor: pointer; flex: none;
     width: 28px; height: 28px; border-radius: 50%;
@@ -144,7 +156,13 @@
   }
   .send:hover:not(:disabled) { background: hsl(var(--text-100)); color: hsl(var(--bg-000)); }
   .send:disabled { opacity: .45; cursor: default; }
-  .hint { color: hsl(var(--text-500)); font-size: 11px; padding: 5px 2px 0; }
+
+  .ctl {
+    appearance: none; background: transparent; color: hsl(var(--text-400));
+    border: 1px solid hsl(var(--bg-400)); border-radius: 8px;
+    font: inherit; font-size: 12px; padding: 4px 8px; cursor: pointer;
+  }
+  .ctl:hover { background: hsl(var(--bg-300)); color: hsl(var(--text-100)); }
 </style>
 </head>
 <body>
@@ -154,18 +172,23 @@
         <path d="M12 1.6c.35 3.9 1.2 6.6 2.6 8 1.4 1.4 4.1 2.25 8 2.6-3.9.35-6.6 1.2-8 2.6-1.4 1.4-2.25 4.1-2.6 8-.35-3.9-1.2-6.6-2.6-8-1.4-1.4-4.1-2.25-8-2.6 3.9-.35 6.6-1.2 8-2.6 1.4-1.4 2.25-4.1 2.6-8Z"/>
       </svg>
       <span class="name">Claude in Chrome</span>
-      <span class="where" id="where">local bridge</span>
     </span>
     <span class="spacer"></span>
     <span class="dot" id="dot" title="bridge connection"></span>
-    <select class="ctl" id="pick" title="Which browser this panel drives"></select>
-    <button class="ctl icon-btn" id="refresh" title="Re-read bridge status">&#8635;</button>
+    <span class="wrap">
+      <button class="picker" id="pick-btn" aria-haspopup="listbox" aria-expanded="false" title="Which browser this panel drives">
+        <span class="label" id="pick-label">browser</span>
+        <svg class="caret" width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg>
+      </button>
+      <div class="menu down" id="pick-menu" role="listbox" hidden></div>
+    </span>
+    <button class="ctl" id="refresh" title="Re-read bridge status" style="padding:4px 7px;line-height:1">&#8635;</button>
   </header>
 
   <div class="meta">
-    <span class="k">Allowed</span><span class="v chips" id="allow">…</span>
-    <span class="spacer" style="flex:1"></span>
-    <span class="k" style="min-width:0">Blocked</span><span class="v" id="approvals">…</span>
+    <span class="k">Allowed</span><span class="chips" id="allow">…</span>
+    <span class="spacer"></span>
+    <span class="k" style="min-width:0">Blocked</span><span id="approvals">…</span>
   </div>
 
   <div id="log">
@@ -176,7 +199,13 @@
     <div class="composer">
       <textarea id="input" rows="1" placeholder="Ask for something the browser should do…"></textarea>
       <div class="row">
-        <select class="model" id="model" title="Model for this panel"></select>
+        <span class="wrap">
+          <button class="picker composer-picker" id="model-btn" aria-haspopup="listbox" aria-expanded="false" title="Model for this panel">
+            <span class="label" id="model-label">Default model</span>
+            <svg class="caret" width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg>
+          </button>
+          <div class="menu up" id="model-menu" role="listbox" hidden></div>
+        </span>
         <span class="spacer"></span>
         <button class="send" id="send" title="Send (Enter)" aria-label="Send">
           <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.9"

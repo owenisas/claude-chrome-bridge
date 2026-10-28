@@ -8,24 +8,31 @@
  * The extension already has <all_urls> host permission, so these fetches are
  * cross-origin but not CORS-gated; the MV3 CSP connect-src is patched to allow
  * the two loopback origins.
+ *
+ * Both pickers are chip + custom menu. A native <select> renders the OS menu,
+ * which looks nothing like the original panel, so they are built by hand.
  */
 const API = 'http://127.0.0.1:8766';
 
 // What the Claude Code CLI accepts on --model, plus the default. Verified against
 // the installed CLI (`fable`, `opus`, `sonnet`, `haiku` all resolve).
 const MODELS = [
-  ['', 'Default model'],
-  ['fable', 'Fable'],
-  ['opus', 'Opus'],
-  ['sonnet', 'Sonnet'],
-  ['haiku', 'Haiku'],
+  { value: '', label: 'Default model' },
+  { value: 'fable', label: 'Fable' },
+  { value: 'opus', label: 'Opus' },
+  { value: 'sonnet', label: 'Sonnet' },
+  { value: 'haiku', label: 'Haiku' },
 ];
 const MODEL_KEY = 'ccb.panel.model';
+
+const CHECK = '<svg class="check" width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 7.6 5.6 10.6 11.5 4"/></svg>';
 
 const $ = (id) => document.getElementById(id);
 const log = $('log');
 let sessionId = null;
 let busy = false;
+let device = '';
+let model = '';
 
 function el(tag, cls, text) {
   const n = document.createElement(tag);
@@ -48,11 +55,9 @@ function renderMarkdown(target, text) {
   const inline = (s) => esc(s)
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  const blocks = text.split(/\n{2,}/);
-  for (const block of blocks) {
+  for (const block of text.split(/\n{2,}/)) {
     const lines = block.split('\n');
-    const isList = lines.every((l) => /^\s*[-*]\s+/.test(l));
-    if (isList) {
+    if (lines.length && lines.every((l) => /^\s*[-*]\s+/.test(l))) {
       const ul = document.createElement('ul');
       for (const l of lines) {
         const li = document.createElement('li');
@@ -75,7 +80,97 @@ async function api(path, init) {
   return body;
 }
 
-// ---------------------------------------------------------------- status
+// ------------------------------------------------------------------ pickers
+
+/** Wire a chip button to a menu: click to toggle, click-away / Escape to close,
+ *  Enter and arrows to move. `getItems` is re-read on open so a dynamic list
+ *  (the connected browsers) is always current. */
+function makePicker({ button, menu, label, getItems, onPick }) {
+  let open = false;
+
+  const close = () => {
+    open = false;
+    menu.hidden = true;
+    button.setAttribute('aria-expanded', 'false');
+  };
+
+  const draw = () => {
+    const items = getItems();
+    menu.replaceChildren(...items.map((it) => {
+      const b = el('button', 'item');
+      b.type = 'button';
+      b.setAttribute('role', 'option');
+      b.setAttribute('aria-selected', String(!!it.selected));
+      b.innerHTML = CHECK;
+      const span = el('span', null, it.label);
+      b.appendChild(span);
+      if (it.hint) b.appendChild(el('span', 'sub', it.hint));
+      b.addEventListener('click', () => { close(); onPick(it); });
+      return b;
+    }));
+  };
+
+  const openMenu = () => {
+    draw();
+    if (!menu.childElementCount) return;
+    open = true;
+    menu.hidden = false;
+    button.setAttribute('aria-expanded', 'true');
+    menu.querySelector('.item[aria-selected="true"]')?.focus();
+  };
+
+  button.addEventListener('click', (e) => { e.stopPropagation(); open ? close() : openMenu(); });
+  button.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); openMenu(); }
+  });
+  menu.addEventListener('keydown', (e) => {
+    const items = [...menu.querySelectorAll('.item')];
+    const i = items.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') { e.preventDefault(); items[Math.min(i + 1, items.length - 1)]?.focus(); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); items[Math.max(i - 1, 0)]?.focus(); }
+    if (e.key === 'Escape') { e.preventDefault(); close(); button.focus(); }
+  });
+  document.addEventListener('click', () => { if (open) close(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && open) { close(); button.focus(); } });
+
+  return { close, setLabel: (t) => { label.textContent = t; } };
+}
+
+// -------------------------------------------------------------------- status
+
+let browsers = [];
+const pickPicker = makePicker({
+  button: $('pick-btn'), menu: $('pick-menu'), label: $('pick-label'),
+  getItems: () => (browsers.length
+    ? browsers.map((b) => {
+        const named = b.profile || b.display_name;
+        const short = String(b.device_id).slice(0, 8);
+        return {
+          value: b.device_id,
+          label: named || `${short}…`,
+          // only worth showing the id when the label isn't already the id
+          hint: named ? short : '',
+          selected: b.device_id === device,
+        };
+      })
+    : [{ value: '', label: 'no browser connected', selected: true, disabled: true }]),
+  onPick: (it) => {
+    if (!it.value) return;
+    device = it.value;
+    pickPicker.setLabel(it.label);
+  },
+});
+
+const modelPicker = makePicker({
+  button: $('model-btn'), menu: $('model-menu'), label: $('model-label'),
+  getItems: () => MODELS.map((m) => ({ value: m.value, label: m.label, selected: m.value === model })),
+  onPick: (it) => {
+    model = it.value;
+    modelPicker.setLabel(it.label);
+    try { localStorage.setItem(MODEL_KEY, model); } catch {}
+    say('note', `model: ${it.label}`);
+  },
+});
 
 async function refresh() {
   let s;
@@ -83,25 +178,22 @@ async function refresh() {
     s = await api('/status');
   } catch (err) {
     $('dot').className = 'dot off';
-    $('where').textContent = 'bridge unreachable';
     $('allow').textContent = '—';
     $('approvals').textContent = '—';
     return;
   }
-  const list = s.extensions || (s.extension?.connected ? [s.extension] : []);
-  $('dot').className = `dot ${list.length ? 'on' : 'off'}`;
-  $('where').textContent = list.length ? `${list.length} browser${list.length > 1 ? 's' : ''}` : 'no browser';
+  browsers = s.extensions || (s.extension?.connected ? [s.extension] : []);
+  $('dot').className = `dot ${browsers.length ? 'on' : 'off'}`;
+  $('dot').title = browsers.length
+    ? `bridge connected — ${browsers.length} browser${browsers.length > 1 ? 's' : ''}`
+    : 'no browser connected to the bridge';
 
-  // One entry per connected browser. Several are common (a daily profile plus a
-  // test one), and the bridge cannot guess, so the panel asks.
-  const keep = $('pick').value;
-  $('pick').replaceChildren(...(list.length ? list.map((b) => {
-    const o = el('option', null, b.profile || b.display_name || `${String(b.device_id).slice(0, 8)}…`);
-    o.value = b.device_id;
-    return o;
-  }) : [el('option', null, 'no browser')]));
-  const ids = list.map((b) => b.device_id);
-  $('pick').value = ids.includes(keep) ? keep : (ids[0] || '');
+  const ids = browsers.map((b) => b.device_id);
+  if (!ids.includes(device)) device = ids[0] || '';
+  const current = browsers.find((b) => b.device_id === device);
+  pickPicker.setLabel(current
+    ? (current.profile || current.display_name || `${String(current.device_id).slice(0, 8)}…`)
+    : 'no browser');
 
   const allowAll = !!s.allow?.allowAll;
   const domainList = s.allow?.domains || [];
@@ -144,7 +236,7 @@ function renderAsks(approvals) {
   }
 }
 
-// ---------------------------------------------------------------- chat
+// ---------------------------------------------------------------------- chat
 
 async function send() {
   const input = $('input');
@@ -162,12 +254,7 @@ async function send() {
     const r = await api('/chat', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        message,
-        session_id: sessionId,
-        device_id: $('pick').value || undefined,
-        model: $('model').value || undefined,
-      }),
+      body: JSON.stringify({ message, session_id: sessionId, device_id: device || undefined, model: model || undefined }),
     });
     sessionId = r.session_id || sessionId;
     pending.remove();
@@ -199,18 +286,13 @@ async function send() {
   }
 }
 
-$('model').replaceChildren(...MODELS.map(([v, label]) => {
-  const o = el('option', null, label);
-  o.value = v;
-  return o;
-}));
+// ------------------------------------------------------------------- wiring
+
 let saved = '';
 try { saved = localStorage.getItem(MODEL_KEY) || ''; } catch {}
-$('model').value = MODELS.some(([v]) => v === saved) ? saved : '';
-$('model').addEventListener('change', () => {
-  try { localStorage.setItem(MODEL_KEY, $('model').value); } catch {}
-  say('note', `model: ${$('model').selectedOptions[0].textContent}`);
-});
+const initial = MODELS.find((m) => m.value === saved) || MODELS[0];
+model = initial.value;
+modelPicker.setLabel(initial.label);
 
 $('send').addEventListener('click', send);
 $('refresh').addEventListener('click', refresh);
