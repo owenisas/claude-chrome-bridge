@@ -23,7 +23,12 @@ import os from 'node:os';
 import crypto from 'node:crypto';
 import { WebSocketServer } from 'ws';
 import { loadFindConfig, runBatch, runFind } from './local-tools.mjs';
+import { chat } from './chat.mjs';
 import { profileFor, profileLabel, profileMatches } from './profiles.mjs';
+import { fileURLToPath } from 'node:url';
+
+// The panel's agent turns attach this bridge's own MCP server.
+const CHAT_MCP = path.join(path.dirname(fileURLToPath(import.meta.url)), 'mcp.mjs');
 
 const STATE_DIR = process.env.CCB_STATE_DIR || path.join(os.homedir(), '.claude-chrome-bridge');
 const ALLOW_FILE = path.join(STATE_DIR, 'allow.json');
@@ -351,6 +356,23 @@ const httpServer = http.createServer(async (req, res) => {
       } catch (err) {
         return json(res, 200, { ok: false, error: err.message });
       }
+    }
+    if (req.method === 'POST' && url.pathname === '/chat') {
+      // One headless agent turn for the local side panel. See bridge/chat.mjs —
+      // the model gets this bridge's browser tools and nothing else, and every
+      // tool call still has to pass the allowlist.
+      const body = JSON.parse(await readBody(req) || '{}');
+      if (typeof body.message !== 'string' || !body.message.trim()) {
+        return json(res, 400, { error: 'message required' });
+      }
+      const turn = await chat(CHAT_MCP, STATE_DIR, {
+        message: body.message,
+        session_id: body.session_id,
+        model: body.model,
+        device_id: body.device_id,
+      });
+      log('chat turn', `${body.session_id ? 'resume' : 'new'} ${turn.ms}ms`, `${turn.tools.length} tool call(s)`, body.device_id ? `device ${String(body.device_id).slice(0, 8)}` : 'no device', turn.error ? `ERROR ${turn.error}` : 'ok');
+      return json(res, 200, { ok: !turn.error, ...turn });
     }
     json(res, 404, { error: 'not found' });
   } catch (err) {

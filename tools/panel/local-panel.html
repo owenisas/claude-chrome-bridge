@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Claude (local bridge)</title>
+<style>
+  :root {
+    --bg: #1f1e1d; --panel: #262624; --line: #3a3937;
+    --text: #f0eee6; --muted: #a3a094; --accent: #d97757;
+    --ok: #7fb069; --bad: #e07a5f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.5 ui-sans-serif, -apple-system, "Segoe UI", sans-serif;
+    display: flex; flex-direction: column; height: 100vh;
+  }
+  header {
+    padding: 12px 14px; border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+  header h1 { font-size: 14px; margin: 0; font-weight: 600; letter-spacing: .01em; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+  .dot.on { background: var(--ok); } .dot.off { background: var(--bad); }
+  .muted { color: var(--muted); font-size: 12px; }
+  .grow { flex: 1; }
+  button {
+    background: var(--panel); color: var(--text); border: 1px solid var(--line);
+    border-radius: 6px; padding: 5px 10px; font: inherit; font-size: 12px; cursor: pointer;
+  }
+  button:hover { border-color: var(--muted); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #1f1e1d; font-weight: 600; }
+  button:disabled { opacity: .5; cursor: default; }
+  .strip { padding: 8px 14px; border-bottom: 1px solid var(--line); }
+  .strip .row { display: flex; gap: 8px; align-items: baseline; margin: 2px 0; }
+  .strip .k { color: var(--muted); font-size: 12px; min-width: 62px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chip {
+    font-size: 11px; border: 1px solid var(--line); border-radius: 999px;
+    padding: 1px 8px; color: var(--muted);
+  }
+  #log { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .msg { max-width: 92%; white-space: pre-wrap; word-wrap: break-word; }
+  .msg.me { align-self: flex-end; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 11px; }
+  .msg.bot { align-self: flex-start; }
+  .msg.sys { align-self: center; color: var(--muted); font-size: 12px; text-align: center; }
+  .tools { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+  .tools .chip { color: var(--accent); border-color: #5a4032; }
+  .tools .chip.internal { color: var(--muted); border-color: var(--line); }
+  .ask { border: 1px solid #5a4032; background: #2b2320; border-radius: 8px; padding: 10px 12px; }
+  .ask p { margin: 0 0 8px; }
+  .ask code { color: var(--accent); }
+  .ask .btns { display: flex; gap: 6px; }
+  .working { color: var(--muted); font-size: 12px; }
+  footer { border-top: 1px solid var(--line); padding: 10px 12px; display: flex; gap: 8px; align-items: flex-end; }
+  textarea {
+    flex: 1; resize: none; background: var(--panel); color: var(--text);
+    border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+    font: inherit; min-height: 38px; max-height: 140px;
+  }
+  textarea:focus, button:focus-visible { outline: 1px solid var(--accent); outline-offset: 0; }
+  select {
+    background: var(--panel); color: var(--text); border: 1px solid var(--line);
+    border-radius: 6px; padding: 5px 8px; font: inherit; font-size: 12px; max-width: 220px;
+  }
+</style>
+</head>
+<body>
+  <header>
+    <span id="dot" class="dot"></span>
+    <h1>Claude in Chrome — local bridge</h1>
+    <span class="grow"></span>
+    <select id="pick" title="Which browser this panel drives"></select>
+    <button id="refresh" title="Re-read bridge status">Refresh</button>
+  </header>
+
+  <div class="strip">
+    <div class="row"><span class="k">Allowed</span><span id="allow" class="chips muted">…</span></div>
+    <div class="row"><span class="k">Blocked</span><span id="approvals" class="muted">…</span></div>
+  </div>
+
+  <div id="log">
+    <div class="msg sys">Local bridge. Messages run through your Claude Code login — no Claude account login here, and no data path to Anthropic's extension relay.</div>
+  </div>
+
+  <footer>
+    <textarea id="input" rows="1" placeholder="Ask for something the browser should do…"></textarea>
+    <button id="send" class="primary">Send</button>
+  </footer>
+
+  <script src="local-panel.js"></script>
+</body>
+</html>

@@ -57,11 +57,15 @@ from pathlib import Path
 EXT_ID = "fcoeoabgfenejglbffodgkkbkcdhcgfn"
 
 PATCHES = [
-    ("manifest.json", "1/4 CSP: allow ws://localhost:8765"),
-    ("assets/SavedPromptsService-N06kd8Mw.js", "2/4 localBridge: true"),
-    ("assets/mcpPermissions-BAI1woDG.js", "3/4 URL-safety check: skip when signed out"),
-    ("assets/service-worker.ts-jNvObEJy.js", "4/4 boot hook: dial on worker start"),
+    ("manifest.json", "1/5 CSP: allow the loopback bridge"),
+    ("assets/SavedPromptsService-N06kd8Mw.js", "2/5 localBridge: true"),
+    ("assets/mcpPermissions-BAI1woDG.js", "3/5 URL-safety check: skip when signed out"),
+    ("assets/service-worker.ts-jNvObEJy.js", "4/5 boot hook: dial on worker start"),
+    ("local-panel.html", "5/5 side panel: serve it locally instead of the login wall"),
 ]
+
+PANEL_DIR = Path(__file__).resolve().parent / "panel"
+PANEL_FILES = ["local-panel.html", "local-panel.js"]
 
 BOOT_HOOK = """
 // --- local bridge patch (4/4) -------------------------------------------------
@@ -107,13 +111,44 @@ def one(pattern: str, text: str, what: str) -> re.Match:
 
 
 def patch_csp(m: dict) -> None:
+    """Allow the loopback bridge in the MV3 CSP: the WebSocket the worker dials,
+    and the HTTP API the local side panel fetches."""
+    want = ["ws://localhost:8765", "ws://127.0.0.1:8765",
+            "http://localhost:8766", "http://127.0.0.1:8766"]
     csp = m["content_security_policy"]["extension_pages"]
-    if "ws://localhost:8765" in csp:
+    missing = [w for w in want if w not in csp]
+    if not missing:
         print("  csp already allows the bridge; skipping")
         return
     i = csp.index("connect-src")
     j = csp.index(";", i) if ";" in csp[i:] else len(csp)
-    m["content_security_policy"]["extension_pages"] = csp[:j] + " ws://localhost:8765" + csp[j:]
+    m["content_security_policy"]["extension_pages"] = csp[:j] + " " + " ".join(missing) + csp[j:]
+
+
+def patch_panel(out: Path) -> None:
+    """Replace the side panel with a local one.
+
+    The stock panel is Anthropic's chat client: it needs an access token *and* a
+    live profile fetch, and its conversation is served from claude.ai. There is
+    no local branch to flip, so this swaps the surface instead — the worker's two
+    `sidePanel.setOptions` call sites point at our page, which talks to the
+    bridge over loopback and runs turns through chat.mjs.
+    """
+    for name in PANEL_FILES:
+        src = PANEL_DIR / name
+        if not src.exists():
+            sys.exit(f"missing {src} — tools/panel/ should hold the local panel")
+        shutil.copy2(src, out / name)
+    sw = out / PATCHES[3][0]
+    s = sw.read_text()
+    if "local-panel.html?tabId=" in s:
+        print("  side panel already points at the local page; skipping")
+        return
+    n = s.count("path:`sidepanel.html?tabId=")
+    if n != 2:
+        sys.exit(f"expected 2 sidePanel.setOptions call sites, found {n} — bundle changed shape")
+    sw.write_text(s.replace("path:`sidepanel.html?tabId=", "path:`local-panel.html?tabId="))
+    print(f"  side panel -> local-panel.html ({n} call sites)")
 
 
 def derive_extension_id(der: bytes) -> str:
@@ -223,7 +258,8 @@ def main() -> None:
     print(f"patching {manifest.get('name')} v{manifest.get('version')} -> {out}")
 
     # Fail loudly if the bundle isn't the one these patches were written for.
-    for rel, what in PATCHES:
+    # (Only the vendor files: the panel is ours, and gets written in by patch 5.)
+    for rel, what in PATCHES[:4]:
         if not (out / rel).exists():
             sys.exit(f"missing {rel} — is this the Claude in Chrome extension? ({what})")
 
@@ -231,6 +267,7 @@ def main() -> None:
     patch_local_bridge(out / PATCHES[1][0])
     patch_url_safety(out / PATCHES[2][0])
     patch_boot_hook(out / PATCHES[3][0])
+    patch_panel(out)
 
     if args.fork_id:
         new_id = fork_identity(manifest, args.fork_key, args.fork_name)
@@ -241,8 +278,11 @@ def main() -> None:
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
 
     print("verifying bundles parse...")
-    for rel, _ in PATCHES[1:]:
+    for rel, _ in PATCHES[1:4]:
         check_js(out / rel)
+    for name in PANEL_FILES:
+        if name.endswith(".js"):
+            check_js(out / name)
 
     print(f"done. load {out} with bridge/launch.mjs (or Load unpacked by hand).")
 
