@@ -7,10 +7,12 @@ This script ships **no Anthropic code**. It operates on a copy you obtain
 yourself (the CRX from the Chrome Web Store, or a directory you already
 unpacked) and rewrites four things:
 
-  1. manifest.json            — allow the loopback socket in the MV3 CSP
+  1. manifest.json            — allow the loopback bridge in the MV3 CSP
   2. SavedPromptsService-*.js — flip `localBridge` to true
   3. mcpPermissions-*.js      — stop the URL-safety check failing closed offline
   4. service-worker.ts-*.js   — dial the bridge on worker boot, not only onStartup
+  5. local-panel.html         — serve our own side panel, not the login wall
+  6. service-worker.ts-*.js   — clear the uninstall survey URL
 
 Everything else in the bundle is left exactly as shipped.
 
@@ -57,11 +59,11 @@ from pathlib import Path
 EXT_ID = "fcoeoabgfenejglbffodgkkbkcdhcgfn"
 
 PATCHES = [
-    ("manifest.json", "1/5 CSP: allow the loopback bridge"),
-    ("assets/SavedPromptsService-N06kd8Mw.js", "2/5 localBridge: true"),
-    ("assets/mcpPermissions-BAI1woDG.js", "3/5 URL-safety check: skip when signed out"),
-    ("assets/service-worker.ts-jNvObEJy.js", "4/5 boot hook: dial on worker start"),
-    ("local-panel.html", "5/5 side panel: serve it locally instead of the login wall"),
+    ("manifest.json", "1/6 CSP: allow the loopback bridge"),
+    ("assets/SavedPromptsService-N06kd8Mw.js", "2/6 localBridge: true"),
+    ("assets/mcpPermissions-BAI1woDG.js", "3/6 URL-safety check: skip when signed out"),
+    ("assets/service-worker.ts-jNvObEJy.js", "4/6 boot hook: dial on worker start"),
+    ("local-panel.html", "5/6 side panel: serve it locally instead of the login wall"),
 ]
 
 PANEL_DIR = Path(__file__).resolve().parent / "panel"
@@ -123,6 +125,24 @@ def patch_csp(m: dict) -> None:
     i = csp.index("connect-src")
     j = csp.index(";", i) if ";" in csp[i:] else len(csp)
     m["content_security_policy"]["extension_pages"] = csp[:j] + " " + " ".join(missing) + csp[j:]
+
+
+def patch_uninstall_url(out: Path) -> None:
+    """Clear the post-uninstall survey.
+
+    The stock build hands Chrome a Google Form as its uninstall URL, so removing
+    the extension pops a survey tab (and tells Anthropic you removed it).
+    `setUninstallURL("")` clears it.
+    """
+    sw = out / PATCHES[3][0]
+    s = sw.read_text()
+    if 'setUninstallURL("")' in s:
+        print("  uninstall url already cleared; skipping")
+        return
+    m = one(r'setUninstallURL\("[^"]*"\)', s, "setUninstallURL")
+    s = s[:m.start()] + 'setUninstallURL("")' + s[m.end():]
+    sw.write_text(s)
+    print("  uninstall survey cleared")
 
 
 def patch_panel(out: Path) -> None:
@@ -267,6 +287,7 @@ def main() -> None:
     patch_local_bridge(out / PATCHES[1][0])
     patch_url_safety(out / PATCHES[2][0])
     patch_boot_hook(out / PATCHES[3][0])
+    patch_uninstall_url(out)
     patch_panel(out)
 
     if args.fork_id:
