@@ -188,9 +188,11 @@ instructions written for Claude in Chrome work unchanged, plus
 are attached.
 
 ```bash
-claude mcp add claude-chrome -- node "$PWD/bridge/mcp.mjs"   # run from the repo root
-claude mcp get claude-chrome                                  # Status: ✔ Connected
+claude mcp add -s user claude-chrome -- "$(command -v node)" "$PWD/bridge/mcp.mjs"   # run from the repo root
+claude mcp get claude-chrome                                                         # Status: ✔ Connected
 ```
+
+User scope makes it available in every project, in the CLI and in the desktop app's Code tab. The bridge has to be running for any of it to work. A LaunchAgent with `RunAtLoad` and `KeepAlive` that runs `node bridge/server.mjs` keeps it up across logins and crashes.
 
 It adds no permissions of its own: every host still goes through the local
 allowlist, and there is deliberately no `allow` tool. A denied call comes back

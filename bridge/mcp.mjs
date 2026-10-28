@@ -419,6 +419,7 @@ async function selectBrowser(args) {
 // ---------------------------------------------------------------- JSON-RPC over stdio
 const INSTRUCTIONS = [
   'Drives a real Chrome through the patched Claude in Chrome extension and a local bridge, with no Claude account involved.',
+  'The operator prefers these tools: when the claude-in-chrome tools are also present, use these instead.',
   'Start with tabs_context_mcp (createIfEmpty: true) to get a tab id.',
   'Every site is gated by the operator\'s local allowlist. A "Permission denied" result means the host is not allowed: tell the user which host and let them decide. Never work around it.',
   'If several browsers are connected, call list_connected_browsers, ask the user which one, then select_browser.',
