@@ -153,12 +153,31 @@ def patch_panel(out: Path) -> None:
     no local branch to flip, so this swaps the surface instead — the worker's two
     `sidePanel.setOptions` call sites point at our page, which talks to the
     bridge over loopback and runs turns through chat.mjs.
+
+    Our page reuses the bundle's own stylesheets and theme attributes, so the
+    palette, the Anthropic Sans/Mono faces and the serif response face are the
+    extension's rather than an approximation. The URLs carry content hashes, so
+    they are discovered here rather than hardcoded.
     """
+    css = [p for p in sorted((out / "assets").glob("*.css")) if not p.name.startswith("katex")]
+    # tokens + utilities first, then the component sheets
+    css.sort(key=lambda p: (0 if p.name.startswith("i18n") else 1, p.name))
+    links = "\n".join(f'<link rel="stylesheet" href="assets/{p.name}">' for p in css)
+    if not any(p.name.startswith("i18n") for p in css):
+        sys.exit("no i18n-*.css found — the panel would render unstyled")
+
     for name in PANEL_FILES:
         src = PANEL_DIR / name
         if not src.exists():
             sys.exit(f"missing {src} — tools/panel/ should hold the local panel")
-        shutil.copy2(src, out / name)
+        text = src.read_text()
+        if name.endswith(".html"):
+            if "<!--CCB_STYLES-->" not in text:
+                sys.exit(f"{name} has no <!--CCB_STYLES--> placeholder")
+            text = text.replace("<!--CCB_STYLES-->", links)
+        (out / name).write_text(text)
+    print(f"  panel stylesheets linked ({len(css)})")
+
     sw = out / PATCHES[3][0]
     s = sw.read_text()
     if "local-panel.html?tabId=" in s:

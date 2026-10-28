@@ -11,6 +11,17 @@
  */
 const API = 'http://127.0.0.1:8766';
 
+// What the Claude Code CLI accepts on --model, plus the default. Verified against
+// the installed CLI (`fable`, `opus`, `sonnet`, `haiku` all resolve).
+const MODELS = [
+  ['', 'Default model'],
+  ['fable', 'Fable'],
+  ['opus', 'Opus'],
+  ['sonnet', 'Sonnet'],
+  ['haiku', 'Haiku'],
+];
+const MODEL_KEY = 'ccb.panel.model';
+
 const $ = (id) => document.getElementById(id);
 const log = $('log');
 let sessionId = null;
@@ -24,10 +35,37 @@ function el(tag, cls, text) {
 }
 
 function say(cls, text) {
-  const n = el('div', `msg ${cls}`, text);
+  const n = el('div', cls, text);
   log.appendChild(n);
   log.scrollTop = log.scrollHeight;
   return n;
+}
+
+/** Escape, then render the little markdown the model actually emits: **bold**,
+ *  `code`, - bullets. Keeps the serif response face looking like the original. */
+function renderMarkdown(target, text) {
+  const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const inline = (s) => esc(s)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  const blocks = text.split(/\n{2,}/);
+  for (const block of blocks) {
+    const lines = block.split('\n');
+    const isList = lines.every((l) => /^\s*[-*]\s+/.test(l));
+    if (isList) {
+      const ul = document.createElement('ul');
+      for (const l of lines) {
+        const li = document.createElement('li');
+        li.innerHTML = inline(l.replace(/^\s*[-*]\s+/, ''));
+        ul.appendChild(li);
+      }
+      target.appendChild(ul);
+    } else {
+      const p = document.createElement('p');
+      p.innerHTML = inline(block).replace(/\n/g, '<br>');
+      target.appendChild(p);
+    }
+  }
 }
 
 async function api(path, init) {
@@ -45,13 +83,14 @@ async function refresh() {
     s = await api('/status');
   } catch (err) {
     $('dot').className = 'dot off';
-    $('pick').replaceChildren(el('option', null, 'bridge unreachable'));
+    $('where').textContent = 'bridge unreachable';
     $('allow').textContent = '—';
     $('approvals').textContent = '—';
     return;
   }
   const list = s.extensions || (s.extension?.connected ? [s.extension] : []);
   $('dot').className = `dot ${list.length ? 'on' : 'off'}`;
+  $('where').textContent = list.length ? `${list.length} browser${list.length > 1 ? 's' : ''}` : 'no browser';
 
   // One entry per connected browser. Several are common (a daily profile plus a
   // test one), and the bridge cannot guess, so the panel asks.
@@ -60,14 +99,17 @@ async function refresh() {
     const o = el('option', null, b.profile || b.display_name || `${String(b.device_id).slice(0, 8)}…`);
     o.value = b.device_id;
     return o;
-  }) : [el('option', null, 'no browser connected')]));
+  }) : [el('option', null, 'no browser')]));
   const ids = list.map((b) => b.device_id);
   $('pick').value = ids.includes(keep) ? keep : (ids[0] || '');
 
-  const domainList = s.allow?.allowAll ? ['all hosts (allowAll)'] : (s.allow?.domains || []);
-  $('allow').replaceChildren(...(domainList.length
-    ? domainList.map((d) => el('span', 'chip', d))
-    : [el('span', null, 'nothing — every host is denied until you allow it')]));
+  const allowAll = !!s.allow?.allowAll;
+  const domainList = s.allow?.domains || [];
+  $('allow').replaceChildren(...(allowAll
+    ? [el('span', 'chip warn', 'all hosts')]
+    : domainList.length
+      ? domainList.map((d) => el('span', 'chip', d))
+      : [el('span', null, 'nothing yet — every host is denied')]));
 
   const approvals = s.approvals || [];
   $('approvals').textContent = approvals.length ? `${approvals.length} recent` : 'none';
@@ -78,14 +120,12 @@ function renderAsks(approvals) {
   for (const a of approvals) {
     const host = a.host || a.url;
     if (!host || document.querySelector(`.ask[data-host="${CSS.escape(host)}"]`)) continue;
-    if (document.querySelector(`.chip[data-allowed="${CSS.escape(host)}"]`)) continue;
-    if (log.querySelector('.msg.sys')) log.querySelectorAll('.msg.sys').forEach((n) => n.remove());
     const box = el('div', 'ask');
     box.dataset.host = host;
     box.appendChild(el('p', null, `A tool asked to reach ${host}. The allowlist refused it.`));
     const btns = el('div', 'btns');
-    const allow = el('button', 'primary', 'Allow this host');
-    const deny = el('button', null, 'Keep blocked');
+    const allow = el('button', 'ctl primary', 'Allow this host');
+    const deny = el('button', 'ctl', 'Keep blocked');
     allow.addEventListener('click', async () => {
       allow.disabled = deny.disabled = true;
       try {
@@ -116,13 +156,18 @@ async function send() {
 
   busy = true;
   $('send').disabled = true;
-  const pending = say('sys working', 'working — the model may drive the browser; a denied host will appear here');
+  const pending = say('working', 'working');
 
   try {
     const r = await api('/chat', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ message, session_id: sessionId, device_id: $('pick').value || undefined }),
+      body: JSON.stringify({
+        message,
+        session_id: sessionId,
+        device_id: $('pick').value || undefined,
+        model: $('model').value || undefined,
+      }),
     });
     sessionId = r.session_id || sessionId;
     pending.remove();
@@ -134,24 +179,38 @@ async function send() {
       log.appendChild(wrap);
     }
 
-    const text = (r.text || '').trim() || (r.error ? '' : '(no reply)');
-    if (text) say('bot', text);
-    if (r.error) say('sys', `turn failed: ${r.error}`);
+    if (r.text && r.text.trim()) {
+      const bot = el('div', 'bot');
+      renderMarkdown(bot, r.text.trim());
+      log.appendChild(bot);
+      log.scrollTop = log.scrollHeight;
+    }
+    if (r.error) say('note', `turn failed: ${r.error}`);
 
     await refresh();
-    // A turn that hit the allowlist leaves a fresh denial; surface it as a prompt.
-    if (r.error && /denied|allow/i.test(r.error)) {
-      say('sys', 'Grant the host above, then send the message again.');
-    }
+    if (r.error && /denied|allow/i.test(r.error)) say('note', 'Grant the host above, then send the message again.');
   } catch (err) {
     pending.remove();
-    say('sys', `bridge error: ${err.message}`);
+    say('note', `bridge error: ${err.message}`);
   } finally {
     busy = false;
     $('send').disabled = false;
     input.focus();
   }
 }
+
+$('model').replaceChildren(...MODELS.map(([v, label]) => {
+  const o = el('option', null, label);
+  o.value = v;
+  return o;
+}));
+let saved = '';
+try { saved = localStorage.getItem(MODEL_KEY) || ''; } catch {}
+$('model').value = MODELS.some(([v]) => v === saved) ? saved : '';
+$('model').addEventListener('change', () => {
+  try { localStorage.setItem(MODEL_KEY, $('model').value); } catch {}
+  say('note', `model: ${$('model').selectedOptions[0].textContent}`);
+});
 
 $('send').addEventListener('click', send);
 $('refresh').addEventListener('click', refresh);
@@ -160,7 +219,7 @@ $('input').addEventListener('keydown', (e) => {
 });
 $('input').addEventListener('input', (e) => {
   e.target.style.height = 'auto';
-  e.target.style.height = `${Math.min(e.target.scrollHeight, 140)}px`;
+  e.target.style.height = `${Math.min(e.target.scrollHeight, 150)}px`;
 });
 
 refresh();

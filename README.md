@@ -22,18 +22,45 @@ cli.mjs …  ──HTTP──▶  127.0.0.1:8766  /tool,/status,/allow,/approval
 
 The bundle already ships a **`localBridge`** code path: with that flag set it dials `ws://localhost:8765`, uses `dev_user_id: "dev_user_local"`, and skips OAuth entirely. It also contains a managed/enterprise mode where a desktop peer drives it locally with no relay. The local-only design is contemplated upstream — the patch set just turns it on.
 
-Four edits, roughly ten lines. `tools/apply-patches.py` performs all of them and verifies the result:
+Six edits, a few dozen lines. `tools/apply-patches.py` performs all of them and verifies the result:
 
 | # | File | Change | Why |
 |---|---|---|---|
-| 1 | `manifest.json` | add `ws://localhost:8765` to `connect-src` | the MV3 CSP blocks the loopback socket otherwise |
+| 1 | `manifest.json` | allow the loopback bridge in `connect-src` | the MV3 CSP blocks the socket and the panel's API calls otherwise |
 | 2 | `assets/SavedPromptsService-*.js` | `localBridge:!1` → `localBridge:!0` | selects the local path — no OAuth, `dev_user_local` |
 | 3 | `assets/mcpPermissions-*.js` | no-token URL-safety check returns instead of `category_unknown_error` | the hosted category lookup fails **closed** when signed out, which would block every navigation |
 | 4 | `assets/service-worker.ts-*.js` | call `$t()` on worker boot, retrying briefly | the extension only dials from `chrome.runtime.onStartup`, which never fires for a CDP-installed extension |
+| 5 | `assets/service-worker.ts-*.js` + `tools/panel/*` | point the side panel at our own page | the stock panel needs an account token *and* a live profile fetch; it has no local mode to flip |
+| 6 | `assets/service-worker.ts-*.js` | `setUninstallURL("…google.com/forms/…")` → `setUninstallURL("")` | removing the extension otherwise opens a survey tab and reports the removal |
 
 Everything else — the executors, the CDP layer, the ref system, tab-group management, console/network capture — is untouched.
 
-Patch 3 is the one to think about before using this: it disables a real safeguard (the hosted malicious-site category check) because that check cannot succeed offline. See [Limits](#limits).
+Patch 3 is the one to think about before using this: it disables a real safeguard (the hosted malicious-site category check) because that check cannot succeed offline. See [Limits](#limits). Patches 5 and 6 replace surfaces rather than flipping flags; both are described below.
+
+### The side panel
+
+The stock panel is Anthropic's chat client, so it asks you to log in: it wants an
+access token *and* a live `/api/oauth/profile` fetch, and the conversation is
+served from claude.ai in an iframe. `localBridge` appears zero times in its
+bundles — there is no local branch to enable.
+
+Patch 5 swaps the surface instead. The worker's two `sidePanel.setOptions` call
+sites point at `local-panel.html`, which talks only to the bridge on loopback:
+status, the allowlist, recent denials, and a chat box. Each message runs one
+headless turn — `claude -p` with this bridge's own MCP server attached — so the
+model gets the browser tools and nothing else, and permissions still come from
+the allowlist. A denial renders as an **Allow / Keep blocked** prompt, where the
+click is the operator's.
+
+It is styled with the bundle's own design tokens and theme attributes, so the
+palette, the Anthropic Sans/Mono faces and the serif response face are the
+extension's rather than an approximation. The stylesheet URLs carry content
+hashes, so the patch discovers them at build time.
+
+The model picker in the composer maps to `claude -p --model`, offering the CLI's
+aliases (`fable`, `opus`, `sonnet`, `haiku`) plus the CLI default, and remembers
+your choice. Set a fixed default in `~/.claude-chrome-bridge/chat.json` instead
+if you'd rather not pick each session.
 
 ---
 
