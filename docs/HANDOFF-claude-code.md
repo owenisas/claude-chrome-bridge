@@ -30,7 +30,7 @@ Claude Code drives a real Chrome through the **patched** Claude in Chrome extens
 - `find` and `browser_batch` are degraded in local mode (`RECON.md` §6). Not fixable without Anthropic's inference service; `find` can at least be re-pointed at the CLI's local scorer.
 - **The native-vs-local benchmark has not been run.** Design is below; it needs a signed-in Claude account for the native arm.
 - **Coexistence is solved:** `tools/apply-patches.py --fork-id` gives the patched build its own extension id (`ioohpagdjalmcbkcmmbnbdjfokmjaodl`, name `Claude (local bridge)`) by replacing the manifest `key`, so the stock build and the forked build install **side by side in one profile**. Verified: Chrome derives exactly the id the script predicts. The current `extension-patched/` is already forked. This removes the old "disable the stock extension first" ordering constraint — both arms can run in the same browser, which is a much cleaner benchmark.
-- Still true: **the bridge tracks a single extension socket** (`let ext` in `server.mjs`). Only the forked build dials it, so the benchmark is unaffected — but two forked installs in two browsers would fight over the channel.
+- **Multiple browsers can be connected at once.** `server.mjs` keeps a peer per connection (`peers` map) and `pickPeer()` resolves which one a command targets: with a single browser attached it just works; with several, pass `--device <device_id|prefix>` (or `CCB_DEVICE`). A reconnect from the same `device_id` replaces its own older socket. Useful for the benchmark — the two arms can even live in two different browsers.
 
 ## Decisions (do not reopen)
 

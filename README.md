@@ -104,38 +104,26 @@ So: driving this extension the supported way needs a Claude account. Pointing it
 
 ## Quickstart
 
-You supply the extension; this repo supplies the patch and the bridge.
-
 ```bash
-# 1. get the extension yourself (store page -> download the CRX, or install it
-#    and copy the unpacked folder out of your profile)
-#    it is "Claude in Chrome", extension id fcoeoabgfenejglbffodgkkbkcdhcgfn
-
-# 2. patch it (no Anthropic code is stored in this repo)
+# 1. patch the extension (you supply it — this repo ships no Anthropic code)
 python3 tools/apply-patches.py --crx ~/Downloads/claude-chrome.crx
 
-#    ...or give the build its own extension id, so it installs ALONGSIDE the
-#    store extension instead of replacing it (handy for comparing the two)
-python3 tools/apply-patches.py --crx ~/Downloads/claude-chrome.crx --fork-id
-#    -> forked identity: ioohpagdjalmcbkcmmbnbdjfokmjaodl
-#    -> name: Claude (local bridge)
-#    -> writes ./extension-patched/ and verifies every bundle still parses
-
-# 3. bridge: the relay replacement + allowlist API
+# 2. bridge: the relay replacement + allowlist API
 cd bridge && npm install && cd ..
 node bridge/server.mjs          # ws://127.0.0.1:8765 (+ ::1), http://127.0.0.1:8766
 
-# 4. a browser that owns the extension
+# 3. a browser that owns the extension
 npx @puppeteer/browsers install chrome@stable --path ./tmp/browsers
-node bridge/launch.mjs          # Chrome for Testing + patched extension, dedicated profile
+node bridge/launch.mjs          # Chrome for Testing + patched extension
 
-# 5. drive it
+# 4. drive it
 node bridge/cli.mjs status
 node bridge/cli.mjs tabs
 node bridge/cli.mjs open https://example.com
 ```
 
-The allowlist starts **empty, which means everything is denied**. That is the intended first-run experience:
+The allowlist starts **empty, which means everything is denied**. That is the
+intended first-run experience:
 
 ```
 $ node bridge/cli.mjs open https://example.com
@@ -147,41 +135,19 @@ blocked by the local allowlist. Recent denied hosts:
 grant with:  node bridge/cli.mjs allow <host>
 ```
 
-`node bridge/cli.mjs help` lists every command: `open`, `read`, `text`, `find`, `click`, `hover`, `type`, `key`, `scroll`, `drag`, `fill`, `js`, `console`, `network`, `screenshot`, `resize`, `batch`, `raw`, plus `allow` / `deny` / `approvals`.
+`node bridge/cli.mjs help` lists every command: `open`, `read`, `text`, `find`,
+`click`, `hover`, `type`, `key`, `scroll`, `drag`, `fill`, `js`, `console`,
+`network`, `screenshot`, `resize`, `batch`, `raw`, plus `allow` / `deny` / `approvals`.
+
+**Full step-by-step, including installing into your own Chrome and a
+troubleshooting table: [`INSTALL.md`](INSTALL.md).**
 
 ### Using it in your everyday Chrome
 
-`--load-extension` no longer works in branded Chrome builds (M137+), and macOS *Secure Preferences* rejects a seeded profile, so a scripted install into your personal profile isn't possible. Do it once by hand — this is the whole path:
-
-```bash
-# 1. patch your own copy (writes ./extension-patched/)
-cd ~/Documents/Automation-agents/claude-chrome-re
-python3 tools/apply-patches.py --crx ~/Downloads/claude-chrome.crx
-
-# 2. start the bridge and leave it running — without it the extension has
-#    nothing to talk to and just retries
-node bridge/server.mjs
-```
-
-3. In Chrome, open `chrome://version` and read the **Profile Path** line. That tells you exactly which profile directory you are installing into — the extension is per-profile, and `Default` is not always the active one.
-
-4. `chrome://extensions` → enable **Developer mode** (top right).
-
-5. Disable or remove the stock **Claude** extension — **unless you built with `--fork-id`**, in which case it has its own id and the two coexist under different names (`Claude` and `Claude (local bridge)`). Without the fork they share one id (the manifest carries the store `key`) and cannot both be installed.
-
-6. **Load unpacked** → select `~/Documents/Automation-agents/claude-chrome-re/extension-patched`
-
-7. Verify:
-
-```bash
-node bridge/cli.mjs status     # extension.connected: true, version 1.0.102
-```
-
-A user-initiated unpacked install persists across restarts, so from then on the extension dials the bridge every time the browser starts.
-
-**If you want the bridge up automatically** at login, wrap step 2 in a launchd agent under `~/Library/LaunchAgents/`. Not set up here — ask if you want it.
-
-**What this does not touch:** your normal browsing. The extension only acts when driven, and the bridge only listens on loopback. The patched build has no host permissions beyond what the store extension already had — it is the same bundle, pointed elsewhere.
+One-time manual install — `--load-extension` no longer works in branded Chrome
+builds (M137+), and macOS *Secure Preferences* rejects a seeded profile, so a
+scripted install into a personal profile isn't possible. The exact steps, with
+paths and verification, are in [`INSTALL.md`](INSTALL.md) step 5B.
 
 #### Running both side by side
 
@@ -198,9 +164,18 @@ The id is a pure function of the manifest `key`, so the fork is reproducible:
 `tools/apply-patches.py --fork-id` reuses `.fork-key.pem` (gitignored) and always
 derives the same id. Delete that file and you get a fresh identity instead.
 
-One caveat when both are running: **the bridge tracks a single extension socket.**
-Only the forked build dials it, so that's fine — but two *forked* installs in two
-browsers will fight over the channel, last one wins.
+Both builds can talk to their own backend at the same time — the bridge keeps a
+peer per connected browser. With one browser attached, commands just work; with
+several, name the one you mean:
+
+```bash
+node bridge/cli.mjs status                    # lists every connected browser
+node bridge/cli.mjs tabs --device a2335e1e     # device_id or an unambiguous prefix
+CCB_DEVICE=a2335e1e node bridge/cli.mjs tabs   # or via the environment
+```
+
+A `device_id` is generated per browser profile, so it stays stable across
+restarts of the same profile.
 
 ---
 

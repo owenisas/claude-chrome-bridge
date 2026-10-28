@@ -1,14 +1,18 @@
 {
-  "name": "bridge",
+  "name": "claude-chrome-bridge",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "description": "Local relay replacement for the Claude in Chrome extension: a loopback WebSocket the patched extension dials, plus an HTTP API and a local allowlist instead of a Claude account.",
+  "license": "MIT",
+  "type": "commonjs",
+  "private": true,
+  "engines": {
+    "node": ">=18"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "scripts": {
+    "start": "node server.mjs",
+    "launch": "node launch.mjs",
+    "cli": "node cli.mjs"
+  },
   "dependencies": {
     "puppeteer-core": "^25.16.0",
     "ws": "^8.22.0"
