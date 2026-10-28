@@ -179,6 +179,29 @@ restarts of the same profile.
 
 ---
 
+## Driving it from Claude Code
+
+`bridge/mcp.mjs` is a stdio MCP server over the bridge's `POST /tool`. It
+exposes the extension's 17 tools under their own names and argument shapes, so
+instructions written for Claude in Chrome work unchanged, plus
+`list_connected_browsers` / `select_browser` for picking a browser when several
+are attached.
+
+```bash
+claude mcp add claude-chrome -- node "$PWD/bridge/mcp.mjs"   # run from the repo root
+claude mcp get claude-chrome                                  # Status: ✔ Connected
+```
+
+It adds no permissions of its own: every host still goes through the local
+allowlist, and there is deliberately no `allow` tool. A denied call comes back
+as an error naming the host and the `cli.mjs allow` command for the operator.
+`file_upload` takes `paths` and sends their contents (the extension no longer
+reads host paths itself), but only from the directory Claude Code started it in
+plus `CCB_UPLOAD_ROOTS`.
+
+`node bridge/selftest.mjs` checks the routing and the adapter against fake
+browsers on spare ports, without touching a live bridge.
+
 ## Tool surface
 
 `navigate`, `read_page`, `get_page_text`, `find`, `form_input`, `javascript_tool`, `computer`, `browser_batch`, `resize_window`, `gif_creator`, `upload_image`, `file_upload`, `tabs_context_mcp`, `tabs_create_mcp`, `tabs_close_mcp`, `read_console_messages`, `read_network_requests`.
@@ -209,8 +232,8 @@ Not yet exercised (same code path, unverified): `form_input`, `type`, `key`, `ho
 
 These are structural, not bugs — each one is a feature that lived on Anthropic's servers:
 
-- **`find` is LLM-backed.** It calls an inference service that isn't reachable in local mode, so it fails with `Anthropic client not available`. The CLI substitutes a lexical scorer over the `read_page --interactive` snapshot. Semantic "find the login button" degrades to text matching.
-- **`browser_batch` pre-checks the extension's internal grant store**, which stays empty locally, so it refuses any prompt-gated action. The CLI detects `permission_required` and replays the list as standalone calls — working, but no longer one atomic batch.
+- **`find` is LLM-backed.** It calls an inference service that isn't reachable in local mode, so it fails with `Anthropic client not available`. The CLI and the MCP adapter substitute a lexical scorer over the `read_page --interactive` snapshot. Semantic "find the login button" degrades to text matching.
+- **`browser_batch` pre-checks the extension's internal grant store**, which stays empty locally, so it refuses any prompt-gated action. The CLI and the MCP adapter detect `permission_required` and replay the list as standalone calls — working, but no longer one atomic batch.
 - **URL category blocking is off.** Patch 3 makes the hosted category lookup skip instead of failing closed, so Anthropic's malicious-site categories (`category1`/`category2`) are no longer enforced.
 - **Plan approval (`follow_a_plan`) and per-site "always allow" grants** are not in the loop; the local allowlist is host-granular only.
 - **Account features are inert**: scheduled tasks and skills migration (need an org UUID), saved-prompt sync, claude.ai messaging, onboarding, the permissions page.
@@ -240,8 +263,11 @@ That is a bounded observation, not a proof — worth re-running yourself with th
 | `bridge/server.mjs` | relay replacement + allowlist + HTTP API |
 | `bridge/launch.mjs` | launches Chrome for Testing with the patched extension connected |
 | `bridge/cli.mjs` | CLI over every tool |
+| `bridge/mcp.mjs` | stdio MCP server for Claude Code over the same HTTP API |
+| `bridge/local-find.mjs` | the offline `find` scorer, shared by the CLI and the adapter |
+| `bridge/selftest.mjs` | routing + adapter self-test with fake browsers on spare ports |
 | `RECON.md` | the full reverse-engineering write-up: protocol, evidence, patch rationale, failure modes |
-| `docs/HANDOFF-claude-code.md` | handoff for driving this from Claude Code (needs an MCP adapter — see the doc) |
+| `docs/HANDOFF-claude-code.md` | handoff for driving this from Claude Code |
 | `tools/ctx.py` | minified-JS context extractor used during the RE |
 
 ### Why `launch.mjs` looks odd

@@ -23,7 +23,7 @@ import os from 'node:os';
 import crypto from 'node:crypto';
 import { WebSocketServer } from 'ws';
 
-const STATE_DIR = path.join(os.homedir(), '.claude-chrome-bridge');
+const STATE_DIR = process.env.CCB_STATE_DIR || path.join(os.homedir(), '.claude-chrome-bridge');
 const ALLOW_FILE = path.join(STATE_DIR, 'allow.json');
 const LOG_FILE = path.join(STATE_DIR, 'bridge.log');
 const WS_PORT = Number(process.env.CCB_WS_PORT || 8765);
@@ -64,27 +64,63 @@ function isAllowed(url) {
 }
 
 // ---------------------------------------------------------------- state
-let ext = null;          // active extension WebSocket
-let extInfo = null;      // connect frame from the extension
-let connectedAt = 0;
-const pending = new Map();   // tool_use_id -> {resolve, reject, timer, tool, args}
+// Several extensions can be connected at once (the forked build in a daily
+// profile plus the launch.mjs browser). Each socket is its own peer; every
+// reply goes back on the socket that asked, and tool calls name their target.
+const peers = new Map();     // ws -> {info, connectedAt}
+const pending = new Map();   // tool_use_id -> {resolve, reject, timer, tool, args, ws}
 const approvals = [];        // denied permission requests (recent, capped)
 const APPROVALS_MAX = 100;
 
-function send(obj) {
-  if (ext && ext.readyState === 1) {
-    ext.send(JSON.stringify(obj));
+function send(ws, obj) {
+  if (ws && ws.readyState === 1) {
+    ws.send(JSON.stringify(obj));
     return true;
   }
   return false;
 }
 
-function rejectAllPending(reason) {
+function rejectPendingFor(ws, reason) {
   for (const [id, p] of pending) {
+    if (p.ws !== ws) continue;
     clearTimeout(p.timer);
     p.reject(new Error(reason));
     pending.delete(id);
   }
+}
+
+function peerInfo(p) {
+  return {
+    device_id: p.info.device_id,
+    display_name: p.info.display_name,
+    dev_user_id: p.info.dev_user_id,
+    extension_version: p.info.extension_version,
+    os_platform: p.info.os_platform,
+    connected_at: new Date(p.connectedAt).toISOString(),
+  };
+}
+
+// oldest first, so the last entry is the most recent connection
+function peerList() {
+  return [...peers.values()].sort((a, b) => a.connectedAt - b.connectedAt).map(peerInfo);
+}
+
+// Never guess between browsers: with more than one connected, the caller must
+// say which, or an agent could end up acting in someone's daily profile.
+function pickPeer(device) {
+  const all = [...peers.entries()];
+  if (!all.length) throw new Error('extension not connected');
+  if (device) {
+    const exact = all.filter(([, p]) => p.info.device_id === device);
+    const hits = exact.length ? exact : all.filter(([, p]) => String(p.info.device_id).startsWith(device));
+    if (hits.length === 1) return hits[0][0];
+    throw new Error(hits.length
+      ? `device_id "${device}" matches ${hits.length} browsers; use more of it`
+      : `no connected browser with device_id "${device}"`);
+  }
+  if (all.length === 1) return all[0][0];
+  const ids = all.map(([, p]) => `${p.info.device_id} (${p.info.display_name || 'unnamed'})`).join(', ');
+  throw new Error(`${all.length} browsers connected: ${ids}. Pick one with device_id`);
 }
 
 // ---------------------------------------------------------------- extension protocol
@@ -93,9 +129,11 @@ function handleExtMessage(ws, raw) {
   try { msg = JSON.parse(raw.toString()); } catch { return; }
   switch (msg.type) {
     case 'connect': {
-      ext = ws;
-      extInfo = msg;
-      connectedAt = Date.now();
+      // a reconnect can arrive before the old socket's close; drop the stale one
+      for (const [other, p] of peers) {
+        if (other !== ws && p.info.device_id === msg.device_id) other.terminate();
+      }
+      peers.set(ws, { info: msg, connectedAt: Date.now() });
       log('extension connect', JSON.stringify({
         client_type: msg.client_type,
         device_id: msg.device_id,
@@ -104,12 +142,12 @@ function handleExtMessage(ws, raw) {
         os_platform: msg.os_platform,
         display_name: msg.display_name,
       }));
-      send({ type: 'paired', scoped_peer_disconnect: true });
-      send({ type: 'peer_connected' });
+      send(ws, { type: 'paired', scoped_peer_disconnect: true });
+      send(ws, { type: 'peer_connected' });
       break;
     }
     case 'ping':
-      send({ type: 'pong' });
+      send(ws, { type: 'pong' });
       break;
     case 'pong':
       break;
@@ -129,11 +167,13 @@ function handleExtMessage(ws, raw) {
     }
     case 'permission_request': {
       const allowed = isAllowed(msg.url);
-      send({ type: 'permission_response', request_id: msg.request_id, allowed });
-      log(`permission ${allowed ? 'ALLOW' : 'DENY'}`, msg.tool_type || '?', msg.url || '?');
+      send(ws, { type: 'permission_response', request_id: msg.request_id, allowed });
+      const device = peers.get(ws)?.info.device_id;
+      log(`permission ${allowed ? 'ALLOW' : 'DENY'}`, msg.tool_type || '?', msg.url || '?', device || '?');
       if (!allowed) {
         approvals.push({
           at: new Date().toISOString(),
+          device_id: device,
           request_id: msg.request_id,
           tool_use_id: msg.tool_use_id,
           tool_type: msg.tool_type,
@@ -161,12 +201,11 @@ function listen(host) {
     log('ws connection', `${host}${req.url}`);
     ws.on('message', (data) => handleExtMessage(ws, data));
     ws.on('close', (code, reason) => {
-      if (ext === ws) {
-        ext = null;
-        extInfo = null;
-        connectedAt = 0;
-        log('extension disconnected', code, String(reason || ''));
-        rejectAllPending('extension disconnected');
+      const p = peers.get(ws);
+      if (p) {
+        peers.delete(ws);
+        log('extension disconnected', p.info.device_id, code, String(reason || ''));
+        rejectPendingFor(ws, 'extension disconnected');
       }
     });
     ws.on('error', (err) => log('ws error', err.message));
@@ -179,16 +218,17 @@ listen('127.0.0.1');
 listen('::1');
 
 // ---------------------------------------------------------------- tool calls
-function runTool(tool, args = {}, timeoutMs = TOOL_TIMEOUT_MS) {
-  if (!ext) return Promise.reject(new Error('extension not connected'));
+function runTool(tool, args = {}, timeoutMs = TOOL_TIMEOUT_MS, device) {
+  let ws;
+  try { ws = pickPeer(device); } catch (err) { return Promise.reject(err); }
   const id = crypto.randomUUID();
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       pending.delete(id);
       reject(new Error(`tool timeout after ${timeoutMs}ms`));
     }, timeoutMs);
-    pending.set(id, { resolve, reject, timer, tool, args });
-    const ok = send({
+    pending.set(id, { resolve, reject, timer, tool, args, ws });
+    const ok = send(ws, {
       type: 'tool_call',
       tool_use_id: id,
       tool,
@@ -231,16 +271,12 @@ const httpServer = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://127.0.0.1:${HTTP_PORT}`);
     if (req.method === 'GET' && url.pathname === '/status') {
+      const list = peerList();
       return json(res, 200, {
-        extension: extInfo ? {
-          connected: true,
-          connected_at: new Date(connectedAt).toISOString(),
-          device_id: extInfo.device_id,
-          dev_user_id: extInfo.dev_user_id,
-          extension_version: extInfo.extension_version,
-          os_platform: extInfo.os_platform,
-          display_name: extInfo.display_name,
-        } : { connected: false },
+        // `extension` is the most recent connection, kept for older callers;
+        // `extensions` is every connected browser
+        extension: list.length ? { connected: true, ...list[list.length - 1] } : { connected: false },
+        extensions: list,
         pending_tool_calls: pending.size,
         approvals: approvals.slice(-20),
         allow: loadAllow(),
@@ -269,10 +305,11 @@ const httpServer = http.createServer(async (req, res) => {
       return json(res, 200, { ok: true, allow: cfg });
     }
     if (req.method === 'POST' && url.pathname === '/tool') {
-      const body = JSON.parse(await readBody(req) || '{}');
+      // file_upload carries base64 file bodies (up to 10 MB of files)
+      const body = JSON.parse(await readBody(req, 24 << 20) || '{}');
       if (!body.tool) return json(res, 400, { error: 'tool required' });
       try {
-        const result = await runTool(body.tool, body.args || {}, body.timeout_ms || TOOL_TIMEOUT_MS);
+        const result = await runTool(body.tool, body.args || {}, body.timeout_ms || TOOL_TIMEOUT_MS, body.device_id);
         return json(res, 200, { ok: !result.is_error && !result.error, result });
       } catch (err) {
         return json(res, 200, { ok: false, error: err.message });

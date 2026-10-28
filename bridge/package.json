@@ -11,7 +11,9 @@
   "scripts": {
     "start": "node server.mjs",
     "launch": "node launch.mjs",
-    "cli": "node cli.mjs"
+    "cli": "node cli.mjs",
+    "mcp": "node mcp.mjs",
+    "test": "node selftest.mjs"
   },
   "dependencies": {
     "puppeteer-core": "^25.16.0",

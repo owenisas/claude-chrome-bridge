@@ -204,6 +204,9 @@ Against `example.com` on Chrome for Testing 136, profile `tmp/ccb-profile`:
 | `bridge/server.mjs` | local relay + allowlist + HTTP API | yes |
 | `bridge/launch.mjs` | launches Chrome for Testing with the patched extension connected | yes |
 | `bridge/cli.mjs` | CLI for every tool | yes |
+| `bridge/mcp.mjs` | stdio MCP server so Claude Code can drive the bridge | yes |
+| `bridge/local-find.mjs` | offline `find` scorer shared by the CLI and the adapter | yes |
+| `bridge/selftest.mjs` | multi-browser routing + adapter self-test with fake peers | yes |
 | `tools/ctx.py` | minified-JS context extractor used during the RE | yes |
 | `binary/claude-chrome.crx` | store CRX v1.0.102 (CRX3), the pristine source | **no** — Anthropic's code |
 | `extension-clean/` | clean unpack from the CRX | **no** — Anthropic's code |

@@ -1,6 +1,7 @@
 # Handoff: drive this bridge from Claude Code, and retire the stock Claude in Chrome
 
 **Created:** 2026-10-28
+**Last updated:** 2026-10-28 (Claude Code session: MCP adapter, multi-browser routing)
 **From:** OpenCode session (reverse-engineering + bridge build)
 **Workspace:** the root of this repository (all paths below are relative to it)
 **Next focus:** stop using the store *Claude in Chrome* extension, use the patched local-bridge build instead, and give Claude Code a way to drive it.
@@ -24,9 +25,14 @@ Claude Code drives a real Chrome through the **patched** Claude in Chrome extens
 - Permission gate works: empty allowlist denies, denials land in `/approvals`, `allow <host>` grants.
 - No Anthropic network dependency: with `api.anthropic.com` mapped to a dead local port, everything still worked and the trap saw zero connections.
 
+- **Claude Code drives the patched extension** through `bridge/mcp.mjs` (stdio MCP over `POST /tool`). Registered as `claude-chrome`, local scope for `~/Documents/Automation-agents`; `claude mcp get claude-chrome` reports Connected, and a headless `claude -p` run called `list_connected_browsers` and got the live device id back. Exposes the extension's 17 tools with their own arg shapes, plus `list_connected_browsers` / `select_browser` (same names as stock Claude in Chrome). No `allow` tool, by design. `node bridge/selftest.mjs`: 40 checks pass; the committed single-socket server fails 14 of them.
+
 **Blocked / missing:**
 
-- **Claude Code cannot drive the patched extension yet.** Claude Code's own paths to this extension are account-gated (relay pairing, or the claude.ai sidepanel iframe with `BROWSER_CONTROL_PERMISSION_ACCEPTED`), and the patched build points at `ws://localhost:8765` instead. The missing piece is an MCP adapter — see Next actions #2.
+- **Multi-browser routing is live** (bridge restarted 2026-10-28 10:57 UTC, detached; `launch.mjs` relaunched too). Two browsers are attached and stable: `40d784c3…` = the forked build in the daily Chrome (managed profile, Profile 32) and `6ac4e08b…` = the `launch.mjs` Chrome for Testing. Neither sends a `display_name`, so the device id is the only way to tell them apart. An undirected call is refused and names both. The old single-slot bridge had them pushing each other off: an idle MV3 worker that loses the slot never redials, which is why the agent browser had to be relaunched.
+- **Arm A (native) is reachable** as of 2026-10-28 ~11:10 UTC, after the stock extension was re-signed in to the app's organization. From a desktop-app Code session, `list_connected_browsers` → one browser `8d382f4a…` ("Browser 1", `isLocal`, `inUse`), and `tabs_context_mcp` answers. The stock and forked builds are now both live in the same daily profile, so both benchmark arms can run in one browser. Before that, the session saw no browser (`list_connected_browsers` → `[]`) even though the extension was signed in to the same account. The cause was the **organization**, as the [Chrome docs](https://code.claude.com/docs/en/chrome#extension-signed-in-to-a-different-organization) describe. Watch for two traps:
+  - **The desktop app and the CLI can be different accounts.** A desktop-app Code session takes its identity from Claude.app (`CLAUDE_CODE_USER_EMAIL`, `CLAUDE_CODE_ORGANIZATION_UUID`), not from the CLI's `~/.claude.json`. Compare with the extension's sign-in, account *and* org.
+  - **Ruled out on the way:** the network (`bridge.claudeusercontent.com` answers 426, and the base URL is `api.anthropic.com`), and the fork (the desktop native host `com.anthropic.claude_browser_extension` trusts `fcoeoabg…`, not `ioohpag…`). Switching the extension's org means logging out of it, which loses its saved shortcuts and scheduled tasks.
 - `find` and `browser_batch` are degraded in local mode (`RECON.md` §6). Not fixable without Anthropic's inference service; `find` can at least be re-pointed at the CLI's local scorer.
 - **The native-vs-local benchmark has not been run.** Design is below; it needs a signed-in Claude account for the native arm.
 - **Coexistence is solved:** `tools/apply-patches.py --fork-id` gives the patched build its own extension id (`ioohpagdjalmcbkcmmbnbdjfokmjaodl`, name `Claude (local bridge)`) by replacing the manifest `key`, so the stock build and the forked build install **side by side in one profile**. Verified: Chrome derives exactly the id the script predicts. The current `extension-patched/` is already forked. This removes the old "disable the stock extension first" ordering constraint — both arms can run in the same browser, which is a much cleaner benchmark.
@@ -88,7 +94,7 @@ real substitute or a degraded copy. It should produce numbers, not impressions.
 | Arm | What runs | Requires |
 |---|---|---|
 | **A — native** | stock store extension, driven the supported way (Claude Code's browser integration: relay pairing or the sidepanel-iframe path) | a signed-in Claude account, `BROWSER_CONTROL_PERMISSION_ACCEPTED`, browser feature enabled |
-| **B — local** | patched extension + this bridge, driven via `bridge/cli.mjs` (or `bridge/mcp.mjs` once built) | nothing but this repo |
+| **B — local** | patched extension + this bridge, driven via `bridge/cli.mjs` or `bridge/mcp.mjs` | nothing but this repo |
 
 Control what you can: **same extension version (1.0.102), same CRX.** Arm A is the
 unpatched build, arm B is patched from the same file, so every tool
@@ -163,9 +169,7 @@ a bug report.
 ## Next actions (ordered)
 
 1. **Verify the current state before touching anything.** `node bridge/cli.mjs status` should show `connected: true`; if not, `node bridge/launch.mjs` (and check `tmp/browsers/` exists).
-2. **Build the MCP adapter** — `bridge/mcp.mjs`, stdio transport, sitting on `POST /tool`. This is the only thing standing between Claude Code and the patched extension. Expose the tool registry from `RECON.md` §2; keep the extension's arg shapes so instructions written against Claude-in-Chrome work unchanged. Then register it:
-   `claude mcp add claude-chrome -- node <repo>/bridge/mcp.mjs`
-   Model the tool list on `bridge/cli.mjs` — it already maps every tool and its flags.
+2. ~~**Build the MCP adapter**~~ — **done** (see "Where we are"). Left over: a live run of the page tools through the adapter needs a host on the allowlist (the self-test covers them against fake browsers).
 3. **Run the native-vs-local benchmark** (design above). Build `bench/fixture/` and the arm-B harness first. Both arms can now run **in the same browser profile** — the patched build is forked, so it installs alongside the stock extension. Publish `docs/BENCHMARK.md` with raw results and the arm-A caveats.
 4. **Install the forked build into the browser you'll benchmark in.** `chrome://extensions` → Developer mode → **Load unpacked** → `extension-patched/`. It appears as `Claude (local bridge)` with id `ioohpagdjalmcbkcmmbnbdjfokmjaodl`. The stock `Claude` extension can stay installed — that's the point of the fork. (If you ever rebuild without `--fork-id`, the ids collide again and you must disable the stock one.)
 5. **Keep the bridge running** whenever the patched extension is installed, or the extension sits there retrying with nothing to talk to. (A launchd agent under `~/Library/LaunchAgents/` is the tidy option; not set up.)
@@ -174,6 +178,6 @@ a bug report.
 
 ## Open questions
 
-- Should the MCP adapter expose the raw extension tools, or a smaller curated set (`read_page`, `computer`, `tabs_*`, `javascript_tool`)? The full surface is 17 tools, several of which are degraded.
-- Where should the adapter live for the user — a user-scoped MCP server, or project-scoped in this repo?
+- ~~Raw tools or a curated set?~~ Answered: the full 17, so stock instructions work unchanged; `find` and `browser_batch` get the CLI's local fallbacks inside the adapter.
+- ~~User scope or project scope?~~ Answered for now: local scope for `~/Documents/Automation-agents`, where agent sessions start. For every project: `claude mcp add -s user claude-chrome -- node <repo>/bridge/mcp.mjs`.
 - Is per-host allowlisting granular enough, or does the operator want per-action control (`click` vs `read_page_content`) that the extension already models internally?

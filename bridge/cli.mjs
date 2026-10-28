@@ -11,6 +11,7 @@
  * Run `node cli.mjs help` for the full command list.
  */
 import fs from 'node:fs';
+import { localFind } from './local-find.mjs';
 
 const API = process.env.CCB_API || 'http://127.0.0.1:8766';
 
@@ -40,6 +41,9 @@ function usage() {
   resize --width W --height H [--tab N]
   batch <file.json>               browser_batch: [{"name":"click","input":{...}},...]
   raw <tool> <json-args>          escape hatch
+
+  --device <id>                   target one browser when several are connected
+                                  (device_id or a prefix, from status; or CCB_DEVICE)
 `);
 }
 
@@ -88,7 +92,7 @@ function textOf(result) {
 async function tool(name, args = {}, timeoutMs) {
   const body = await api('/tool', {
     method: 'POST',
-    body: JSON.stringify({ tool: name, args, timeout_ms: timeoutMs }),
+    body: JSON.stringify({ tool: name, args, timeout_ms: timeoutMs, device_id: flags.device || process.env.CCB_DEVICE || undefined }),
   });
   if (!body.ok) {
     // denials and tool errors arrive as a normal result with is_error set;
@@ -105,24 +109,6 @@ function num(v) {
   if (v === undefined) return undefined;
   const n = Number(v);
   return Number.isFinite(n) ? n : undefined;
-}
-
-// Local stand-in for the extension's LLM-backed `find`: score the interactive
-// read_page snapshot by term overlap so the ref-based tools still work offline.
-function localFind(snapshot, query) {
-  const terms = query.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 1);
-  const out = [];
-  for (const raw of snapshot.split('\n')) {
-    const line = raw.trim();
-    if (!line || !/\[ref_\d+\]/.test(line)) continue;
-    const low = line.toLowerCase();
-    const role = (line.split(/[\s"]/)[0] || '').toLowerCase();
-    let score = 0;
-    for (const t of terms) if (low.includes(t)) score += t.length >= 4 ? 2 : 1;
-    if (terms.some((t) => role.includes(t))) score += 1.5;
-    if (score > 0) out.push({ score, line });
-  }
-  return out.sort((a, b) => b.score - a.score).slice(0, 20);
 }
 
 function printResult(result, flags) {
