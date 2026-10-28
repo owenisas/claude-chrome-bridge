@@ -28,6 +28,8 @@ Claude Code drives a real Chrome through the **patched** Claude in Chrome extens
 
 - **Claude Code cannot drive the patched extension yet.** Claude Code's own paths to this extension are account-gated (relay pairing, or the claude.ai sidepanel iframe with `BROWSER_CONTROL_PERMISSION_ACCEPTED`), and the patched build points at `ws://localhost:8765` instead. The missing piece is an MCP adapter — see Next actions #2.
 - `find` and `browser_batch` are degraded in local mode (`RECON.md` §6). Not fixable without Anthropic's inference service; `find` can at least be re-pointed at the CLI's local scorer.
+- **The native-vs-local benchmark has not been run.** Design is below; it needs a signed-in Claude account for the native arm.
+- **Ordering constraint:** the stock and patched builds share one extension id, so they cannot coexist in a single profile. If you want the native arm, measure it **before** retiring the stock extension — or run arm B from a second profile.
 
 ## Decisions (do not reopen)
 
@@ -75,6 +77,81 @@ HTTP API for an adapter to sit on: `GET /status`, `GET /approvals`, `POST /allow
 - `README.md` — public-facing overview, same content in shorter form.
 - `docs/HANDOFF-claude-code.md` — this file.
 
+## Benchmark: native vs local
+
+**Not run yet.** This is the measurement that decides whether the local path is a
+real substitute or a degraded copy. It should produce numbers, not impressions.
+
+### Two arms
+
+| Arm | What runs | Requires |
+|---|---|---|
+| **A — native** | stock store extension, driven the supported way (Claude Code's browser integration: relay pairing or the sidepanel-iframe path) | a signed-in Claude account, `BROWSER_CONTROL_PERMISSION_ACCEPTED`, browser feature enabled |
+| **B — local** | patched extension + this bridge, driven via `bridge/cli.mjs` (or `bridge/mcp.mjs` once built) | nothing but this repo |
+
+Control what you can: **same extension version (1.0.102), same CRX.** Arm A is the
+unpatched build, arm B is patched from the same file, so every tool
+implementation is identical. Differences are therefore attributable to (i)
+features that need Anthropic servers, (ii) the permission model, (iii) the
+driver — which is exactly what we want to know. Prefer running both arms in the
+**same Chrome** (A in your daily profile, B in a separate profile with the
+unpacked build) so engine version isn't a variable.
+
+**If arm A cannot be enabled** — no account, feature unavailable, org policy —
+do not fake it. Fall back to the capability matrix and label it clearly as
+*not* a head-to-head.
+
+### Fixture
+
+Deterministic local pages only. No third-party sites, no logins, no side effects
+on anything you care about. Build `bench/fixture/` served on
+`http://127.0.0.1:8899`, containing:
+
+- a form: text input, select, checkbox, submit button that mutates the DOM
+- a button whose click changes the URL hash and a text node
+- a page that logs an error and issues a `fetch` (for the console/network readers)
+- a scrollable container, plus an element that requires `scroll_to`
+- a drag source and drop target
+- `<input type=file>` and a small PNG to upload
+
+Scope the allowlist to `127.0.0.1` for the run, then **reset it to empty**.
+
+### Task suite
+
+Score each as **pass / degraded / fail**, and record tool calls, wall-clock, and
+permission prompts.
+
+| # | Task | What it isolates |
+|---|---|---|
+| 1 | `navigate` to the fixture | transport + permission gating |
+| 2 | `read_page --interactive`, count refs, locate a known element | snapshot quality |
+| 3 | `find "submit button"` | **semantic find — expected to diverge** |
+| 4 | `form_input` fill, then `computer type` | the two input paths |
+| 5 | `left_click` by ref on the mutating button, assert the DOM changed | ref resolution + real input events |
+| 6 | `computer screenshot`, assert dimensions and non-trivial bytes | capture |
+| 7 | `javascript_tool` reading a page variable | JS eval |
+| 8 | `read_console_messages` after triggering an error | console capture |
+| 9 | `read_network_requests` after a fetch | network capture |
+| 10 | multi-step: fill → submit → assert the result | orchestration, step count |
+| 11 | cross-domain hop, count permission prompts | the permission model |
+| 12 | `browser_batch` with a prompt-gated action | **batch gating — expected to diverge** |
+| 13 | `tabs_create_mcp` / `tabs_close_mcp` lifecycle | tab grouping |
+| 14 | `resize_window`, `zoom`, `scroll`, `scroll_to`, `hover`, `drag` | the unverified tail |
+| 15 | `upload_image` / `file_upload` with the fixture PNG | file paths |
+
+### Metrics and evidence
+
+- Tasks passed / degraded / failed, per arm.
+- Tool calls and wall-clock per task; permission prompts per task.
+- Agent steps and tokens, if measurable from the Claude Code side.
+- For arm B, `~/.claude-chrome-bridge/bridge.log` is an exact frame-level trace —
+  use it as the evidence trail, and keep the raw JSON per run.
+
+**Deliverable:** `docs/BENCHMARK.md` plus `bench/results/*.json`, published with
+the arm-A caveats stated plainly. Two tasks are expected to differ for structural
+reasons (`find`, `browser_batch`) — say so in advance so the result isn't read as
+a bug report.
+
 ## Suggested skills
 
 - `session-handoff` — to pass this on again.
@@ -87,10 +164,11 @@ HTTP API for an adapter to sit on: `GET /status`, `GET /approvals`, `POST /allow
 2. **Build the MCP adapter** — `bridge/mcp.mjs`, stdio transport, sitting on `POST /tool`. This is the only thing standing between Claude Code and the patched extension. Expose the tool registry from `RECON.md` §2; keep the extension's arg shapes so instructions written against Claude-in-Chrome work unchanged. Then register it:
    `claude mcp add claude-chrome -- node <repo>/bridge/mcp.mjs`
    Model the tool list on `bridge/cli.mjs` — it already maps every tool and its flags.
-3. **Retire the stock extension.** In `chrome://extensions`, disable or remove *Claude* (id `fcoeoabgfenejglbffodgkkbkcdhcgfn`). It cannot coexist with the patched build — same id, because the manifest carries the store `key`. Then **Load unpacked** → `extension-patched/`.
-4. **Keep the bridge running** whenever the patched extension is installed, or the extension sits there retrying with nothing to talk to.
-5. **Harden the HTTP API** before pointing this at a daily-use profile: validate the `Host` header (DNS-rebinding gap, README "Security model") and consider a token on `/tool`.
-6. **Optional:** re-point `find` at the CLI's local scorer inside the extension, so it stops erroring with `Anthropic client not available`.
+3. **Run the native-vs-local benchmark** (design above). Build `bench/fixture/` and the arm-B harness first, then measure arm A **before** step 4 retires the stock extension. Publish `docs/BENCHMARK.md` with raw results and the arm-A caveats.
+4. **Retire the stock extension.** In `chrome://extensions`, disable or remove *Claude* (id `fcoeoabgfenejglbffodgkkbkcdhcgfn`). It cannot coexist with the patched build — same id, because the manifest carries the store `key`. Then **Load unpacked** → `extension-patched/`.
+5. **Keep the bridge running** whenever the patched extension is installed, or the extension sits there retrying with nothing to talk to. (A launchd agent under `~/Library/LaunchAgents/` is the tidy option; not set up.)
+6. **Harden the HTTP API** before pointing this at a daily-use profile: validate the `Host` header (DNS-rebinding gap, README "Security model") and consider a token on `/tool`.
+7. **Optional:** re-point `find` at the CLI's local scorer inside the extension, so it stops erroring with `Anthropic client not available`.
 
 ## Open questions
 

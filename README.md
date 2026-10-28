@@ -145,13 +145,37 @@ grant with:  node bridge/cli.mjs allow <host>
 
 ### Using it in your everyday Chrome
 
-`--load-extension` no longer works in branded Chrome builds (M137+), and macOS *Secure Preferences* rejects a seeded profile, so a scripted install into your personal profile isn't possible. Do it once by hand:
+`--load-extension` no longer works in branded Chrome builds (M137+), and macOS *Secure Preferences* rejects a seeded profile, so a scripted install into your personal profile isn't possible. Do it once by hand — this is the whole path:
 
-1. `chrome://extensions` → enable **Developer mode**
-2. **Load unpacked** → select `extension-patched/`
-3. keep `node bridge/server.mjs` running
+```bash
+# 1. patch your own copy (writes ./extension-patched/)
+cd ~/Documents/Automation-agents/claude-chrome-re
+python3 tools/apply-patches.py --crx ~/Downloads/claude-chrome.crx
 
-A user-initiated install persists, so the extension dials the bridge on every browser start. Note the patched manifest carries the store `key`, so it has the **same extension id** as the store build — the two cannot coexist in one profile.
+# 2. start the bridge and leave it running — without it the extension has
+#    nothing to talk to and just retries
+node bridge/server.mjs
+```
+
+3. In Chrome, open `chrome://version` and read the **Profile Path** line. That tells you exactly which profile directory you are installing into — the extension is per-profile, and `Default` is not always the active one.
+
+4. `chrome://extensions` → enable **Developer mode** (top right).
+
+5. Disable or remove the stock **Claude** extension. It shares the id with the patched build (the manifest carries the store `key`), so the two cannot coexist in one profile.
+
+6. **Load unpacked** → select `~/Documents/Automation-agents/claude-chrome-re/extension-patched`
+
+7. Verify:
+
+```bash
+node bridge/cli.mjs status     # extension.connected: true, version 1.0.102
+```
+
+A user-initiated unpacked install persists across restarts, so from then on the extension dials the bridge every time the browser starts.
+
+**If you want the bridge up automatically** at login, wrap step 2 in a launchd agent under `~/Library/LaunchAgents/`. Not set up here — ask if you want it.
+
+**What this does not touch:** your normal browsing. The extension only acts when driven, and the bridge only listens on loopback. The patched build has no host permissions beyond what the store extension already had — it is the same bundle, pointed elsewhere.
 
 ---
 
