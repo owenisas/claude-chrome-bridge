@@ -44,6 +44,8 @@ function usage() {
 
   --device <id>                   target one browser when several are connected
                                   (device_id or a prefix, from status; or CCB_DEVICE)
+  CCB_SESSION=<id>                work in a background tab group for session <id>
+                                  instead of opening a focused window
 `);
 }
 
@@ -92,7 +94,14 @@ function textOf(result) {
 async function tool(name, args = {}, timeoutMs) {
   const body = await api('/tool', {
     method: 'POST',
-    body: JSON.stringify({ tool: name, args, timeout_ms: timeoutMs, device_id: flags.device || process.env.CCB_DEVICE || undefined }),
+    body: JSON.stringify({
+      tool: name,
+      args,
+      timeout_ms: timeoutMs,
+      device_id: flags.device || process.env.CCB_DEVICE || undefined,
+      // a session works in a background tab group instead of a focused window
+      session_scope: process.env.CCB_SESSION ? { sessionId: process.env.CCB_SESSION, displayName: 'cli' } : undefined,
+    }),
   });
   if (!body.ok) {
     // denials and tool errors arrive as a normal result with is_error set;

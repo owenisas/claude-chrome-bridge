@@ -1,0 +1,783 @@
+{
+  "arm": "B",
+  "suite": "reddit",
+  "label": "patched extension via local bridge (POST /tool), real site, read-only",
+  "started_at": "2026-10-28T11:33:01.419Z",
+  "device_id": "40d784c3-f269-48ae-803a-c38e32aaa6b4",
+  "extension_version": "1.0.102",
+  "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+  "site": "https://www.reddit.com/r/programming/",
+  "mode": "background session group",
+  "finished_at": "2026-10-28T11:33:10.427Z",
+  "summary": {
+    "pass": 6,
+    "degraded": 3,
+    "fail": 1
+  },
+  "total_tool_calls": 47,
+  "total_permission_prompts": 40,
+  "tasks": [
+    {
+      "id": "R1",
+      "name": "open a subreddit",
+      "isolates": "real-site navigation + gating",
+      "verdict": "pass",
+      "calls": [
+        {
+          "tool": "tabs_context_mcp",
+          "args": {
+            "createIfEmpty": true
+          },
+          "ms": 32,
+          "ok": true,
+          "text": "{\"availableTabs\":[{\"tabId\":46544404,\"title\":\"New Tab\",\"url\":\"chrome://newtab/\"}],\"tabGroupId\":1757112485}\n\n\nTab Context:\n- Available tabs:\n  • tabId 46544404: \"New Tab\" (\"chrome://newtab/\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significantly faster. Batch your next sequence of clicks, types, navigations, and scr",
+          "images": []
+        },
+        {
+          "tool": "navigate",
+          "args": {
+            "url": "https://www.reddit.com/r/programming/",
+            "tabId": 46544404
+          },
+          "ms": 328,
+          "ok": true,
+          "text": "Navigated to https://www.reddit.com/r/programming/\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"https://www.reddit.com/r/programming/\" (\"https://www.reddit.com/r/programming/\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significantly faster. Batch your next sequence of clicks, t",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify([location.pathname, document.readyState, document.querySelectorAll(\"shreddit-post\").length]) + '@@'",
+            "tabId": 46544404
+          },
+          "ms": 561,
+          "ok": true,
+          "text": "@@[\"/r/programming/\",\"loading\",0]@@\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"Reddit - The heart of the internet\" (\"https://www.reddit.com/r/programming/\")",
+          "images": []
+        },
+        {
+          "tool": "computer",
+          "args": {
+            "action": "wait",
+            "duration": 1,
+            "tabId": 46544404
+          },
+          "ms": 1013,
+          "ok": true,
+          "text": "Waited for 1 second\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/r/programming/\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significantly faster. Batch your next sequence of clicks, types, navigations, and screenshots together.</system-remi",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify([location.pathname, document.readyState, document.querySelectorAll(\"shreddit-post\").length]) + '@@'",
+            "tabId": 46544404
+          },
+          "ms": 6,
+          "ok": true,
+          "text": "@@[\"/r/programming/\",\"interactive\",3]@@\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/r/programming/\")",
+          "images": []
+        },
+        {
+          "tool": "computer",
+          "args": {
+            "action": "wait",
+            "duration": 1,
+            "tabId": 46544404
+          },
+          "ms": 1005,
+          "ok": true,
+          "text": "Waited for 1 second\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/r/programming/\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significantly faster. Batch your next sequence of clicks, types, navigations, and screenshots together.</system-remi",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify([location.pathname, document.readyState, document.querySelectorAll(\"shreddit-post\").length]) + '@@'",
+            "tabId": 46544404
+          },
+          "ms": 6,
+          "ok": true,
+          "text": "@@[\"/r/programming/\",\"complete\",3]@@\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/r/programming/\")",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify(document.querySelectorAll(\"shreddit-post\").length) + '@@'",
+            "tabId": 46544404
+          },
+          "ms": 7,
+          "ok": true,
+          "text": "@@3@@\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/r/programming/\")",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify(!!document.querySelector(\"#expand-user-drawer-button\")) + '@@'",
+            "tabId": 46544404
+          },
+          "ms": 5,
+          "ok": true,
+          "text": "@@true@@\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/r/programming/\")",
+          "images": []
+        }
+      ],
+      "notes": [
+        "3 posts rendered; signed in: true"
+      ],
+      "wall_ms": 2964,
+      "tool_calls": 9,
+      "permission_prompts": 6,
+      "permission_log": [
+        "permission ALLOW navigate https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4"
+      ]
+    },
+    {
+      "id": "R2",
+      "name": "get_page_text on a heavy page",
+      "isolates": "content extraction",
+      "verdict": "degraded",
+      "calls": [
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify([...document.querySelectorAll(\"shreddit-post\")].slice(0, 10).map((p) => p.getAttribute(\"post-title\") || \"\")) + '@@'",
+            "tabId": 46544404
+          },
+          "ms": 5,
+          "ok": true,
+          "text": "@@[\"Anti-Patterns in Software Blogging\",\"Python jettisons the native JIT, at least for now\",\"It's still OK to enjoy programming\"]@@\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/r/programming/\")",
+          "images": []
+        },
+        {
+          "tool": "get_page_text",
+          "args": {
+            "tabId": 46544404
+          },
+          "ms": 116,
+          "ok": true,
+          "text": "Title: programming\nURL: https://www.reddit.com/r/programming/\nSource element: <article>\n---\nRepost\nPython jettisons the native JIT, at least for now\nu/nicholashairs\n•\n10 hr. ago\nPython jettisons the native JIT, at least for now\nhttps://lwn.net/SubscriberLink/1102102/489e41d80e4966aa/\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.redd",
+          "images": []
+        }
+      ],
+      "notes": [
+        "423 chars from <article>; 1 of 3 rendered post titles in it"
+      ],
+      "wall_ms": 121,
+      "tool_calls": 2,
+      "permission_prompts": 2,
+      "permission_log": [
+        "permission ALLOW execute_javascript https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW read_page_content https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4"
+      ]
+    },
+    {
+      "id": "R3",
+      "name": "read_page interactive on a web-component app",
+      "isolates": "snapshot quality on a real site",
+      "verdict": "degraded",
+      "calls": [
+        {
+          "tool": "read_page",
+          "args": {
+            "tabId": 46544404,
+            "filter": "interactive"
+          },
+          "ms": 72,
+          "ok": true,
+          "text": "link \"Home\" [ref_1] href=\"https://www.reddit.com/\"\nlink [ref_2] href=\"https://ads.reddit.com/register?utm_source=web3x_consumer&utm_name=nav_cta\"\nlink \"Create post\" [ref_3] href=\"/r/programming/submit/\"\nbutton [ref_4] type=\"button\"\nlink [ref_5] href=\"/r/programming/submit\"\nbutton [ref_6] type=\"button\"\nlink [ref_7] href=\"https://www.reddit.com/r/programming/comments/1wzw4cw/antipatterns_in_software",
+          "images": []
+        }
+      ],
+      "notes": [
+        "32 refs, 1 titled post links, search box in snapshot: false"
+      ],
+      "wall_ms": 72,
+      "tool_calls": 1,
+      "permission_prompts": 1,
+      "permission_log": [
+        "permission ALLOW read_page_content https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4"
+      ]
+    },
+    {
+      "id": "R4",
+      "name": "find \"search box\"",
+      "isolates": "semantic find (expected to diverge)",
+      "verdict": "fail",
+      "calls": [
+        {
+          "tool": "find",
+          "args": {
+            "query": "search box",
+            "tabId": 46544404
+          },
+          "ms": 13,
+          "ok": false,
+          "error_code": "find_exception",
+          "text": "Failed to find element: Anthropic client not available",
+          "images": [],
+          "error": "Failed to find element: Anthropic client not available"
+        }
+      ],
+      "notes": [
+        "extension find unavailable; local scorer top hit: none"
+      ],
+      "wall_ms": 14,
+      "tool_calls": 1,
+      "permission_prompts": 1,
+      "permission_log": [
+        "permission ALLOW read_page_content https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4"
+      ]
+    },
+    {
+      "id": "R5",
+      "name": "search the site for \"rust\"",
+      "isolates": "typing into a real control",
+      "verdict": "degraded",
+      "calls": [
+        {
+          "tool": "computer",
+          "args": {
+            "action": "screenshot",
+            "tabId": 46544404
+          },
+          "ms": 212,
+          "ok": true,
+          "text": "Successfully captured screenshot (1512x771, jpeg) - ID: ss_4797lqe54\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/r/programming/\")",
+          "images": [
+            {
+              "media": "image/jpeg",
+              "bytes": 71417
+            }
+          ]
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify((() => { const e = document.querySelector(\"reddit-search-large, faceplate-search-input\"); const r = e.getBoundingClientRect(); return [r.x + Math.min(r.width / 2, 120), r.y + r.height / 2]; })()) + '@@'",
+            "tabId": 46544404
+          },
+          "ms": 7,
+          "ok": true,
+          "text": "@@[596,29]@@\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/r/programming/\")",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify(window.innerWidth) + '@@'",
+            "tabId": 46544404
+          },
+          "ms": 6,
+          "ok": true,
+          "text": "@@1512@@\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/r/programming/\")",
+          "images": []
+        },
+        {
+          "tool": "computer",
+          "args": {
+            "action": "left_click",
+            "coordinate": [
+              596,
+              29
+            ],
+            "tabId": 46544404
+          },
+          "ms": 337,
+          "ok": true,
+          "text": "Clicked at (596, 29)\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/r/programming/\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significantly faster. Batch your next sequence of clicks, types, navigations, and screenshots together.</system-rem",
+          "images": []
+        },
+        {
+          "tool": "computer",
+          "args": {
+            "action": "type",
+            "text": "rust",
+            "tabId": 46544404
+          },
+          "ms": 14,
+          "ok": true,
+          "text": "Typed \"rust\"\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/r/programming/\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significantly faster. Batch your next sequence of clicks, types, navigations, and screenshots together.</system-reminder>",
+          "images": []
+        },
+        {
+          "tool": "computer",
+          "args": {
+            "action": "key",
+            "text": "Enter",
+            "tabId": 46544404
+          },
+          "ms": 15,
+          "ok": true,
+          "text": "Pressed 1 key: Enter\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/search/?q=rust&cId=ccbaad77-e7cb-4ccf-8288-42ddcec81524&iId=8eef3c81-557a-4fc5-be01-81a0165bbc50&kwfEligible=1\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significantly faste",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify([location.pathname, new URLSearchParams(location.search).get(\"q\")]) + '@@'",
+            "tabId": 46544404
+          },
+          "ms": 5,
+          "ok": true,
+          "text": "@@[\"/search/\",\"rust\"]@@\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/search/?q=rust&cId=ccbaad77-e7cb-4ccf-8288-42ddcec81524&iId=8eef3c81-557a-4fc5-be01-81a0165bbc50&kwfEligible=1\")",
+          "images": []
+        },
+        {
+          "tool": "navigate",
+          "args": {
+            "url": "https://www.reddit.com/r/programming/",
+            "tabId": 46544404
+          },
+          "ms": 309,
+          "ok": true,
+          "text": "Navigated to https://www.reddit.com/r/programming/\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"https://www.reddit.com/r/programming/\" (\"https://www.reddit.com/r/programming/\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significantly faster. Batch your next sequence of clicks, t",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify([location.pathname, document.readyState, document.querySelectorAll(\"shreddit-post\").length]) + '@@'",
+            "tabId": 46544404
+          },
+          "ms": 186,
+          "ok": true,
+          "text": "@@[\"/r/programming/\",\"loading\",0]@@\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"https://www.reddit.com/r/programming/\" (\"https://www.reddit.com/r/programming/\")",
+          "images": []
+        },
+        {
+          "tool": "computer",
+          "args": {
+            "action": "wait",
+            "duration": 1,
+            "tabId": 46544404
+          },
+          "ms": 1010,
+          "ok": true,
+          "text": "Waited for 1 second\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/r/programming/\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significantly faster. Batch your next sequence of clicks, types, navigations, and screenshots together.</system-remi",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify([location.pathname, document.readyState, document.querySelectorAll(\"shreddit-post\").length]) + '@@'",
+            "tabId": 46544404
+          },
+          "ms": 5,
+          "ok": true,
+          "text": "@@[\"/r/programming/\",\"interactive\",3]@@\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/r/programming/\")",
+          "images": []
+        },
+        {
+          "tool": "computer",
+          "args": {
+            "action": "wait",
+            "duration": 1,
+            "tabId": 46544404
+          },
+          "ms": 1004,
+          "ok": true,
+          "text": "Waited for 1 second\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/r/programming/\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significantly faster. Batch your next sequence of clicks, types, navigations, and screenshots together.</system-remi",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify([location.pathname, document.readyState, document.querySelectorAll(\"shreddit-post\").length]) + '@@'",
+            "tabId": 46544404
+          },
+          "ms": 6,
+          "ok": true,
+          "text": "@@[\"/r/programming/\",\"complete\",3]@@\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/r/programming/\")",
+          "images": []
+        }
+      ],
+      "notes": [
+        "clicked the search box by coordinates"
+      ],
+      "wall_ms": 3117,
+      "tool_calls": 13,
+      "permission_prompts": 11,
+      "permission_log": [
+        "permission ALLOW read_page_content https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW click https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW type https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW type https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript https://www.reddit.com/search/?q=rust&cId=ccbaad77-e7cb-4ccf-8288-42ddcec81524&iId=8eef3c81-557a-4fc5-be01-81a0165bbc50&kwfEligible=1 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW navigate https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript https://www.reddit.com/search/?q=rust&cId=ccbaad77-e7cb-4ccf-8288-42ddcec81524&iId=8eef3c81-557a-4fc5-be01-81a0165bbc50&kwfEligible=1 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4"
+      ]
+    },
+    {
+      "id": "R6",
+      "name": "screenshot of a real page",
+      "isolates": "capture",
+      "verdict": "pass",
+      "calls": [
+        {
+          "tool": "computer",
+          "args": {
+            "action": "screenshot",
+            "tabId": 46544404
+          },
+          "ms": 173,
+          "ok": true,
+          "text": "Successfully captured screenshot (1512x771, jpeg) - ID: ss_7879lbv8n\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/r/programming/\")",
+          "images": [
+            {
+              "media": "image/jpeg",
+              "bytes": 68909
+            }
+          ]
+        }
+      ],
+      "notes": [
+        "1512x771, 68909 bytes"
+      ],
+      "wall_ms": 174,
+      "tool_calls": 1,
+      "permission_prompts": 1,
+      "permission_log": [
+        "permission ALLOW read_page_content https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4"
+      ]
+    },
+    {
+      "id": "R7",
+      "name": "infinite scroll loads more posts; network capture",
+      "isolates": "scroll + network on a real feed",
+      "verdict": "pass",
+      "calls": [
+        {
+          "tool": "read_console_messages",
+          "args": {
+            "tabId": 46544404,
+            "clear": true
+          },
+          "ms": 7,
+          "ok": true,
+          "text": "Found 1 console messages:\n\n[1] [7:33:06 PM] [LOG] (https://www.redditstatic.com/js/concat?prefix=en-US/&chunks=-jMLgHhM5h,0l3Ly4w8Bk,2dVvuItiXl,3soj0Gx8up,4vQMFq5SQo,5BjtCPZnRR,6H_nNYkly2,6T_jLtz7iK,7m7Vh_88ao,8ceMH6qoPU,B-KJDG84Mk,B0Ts2WOzAQ,B1p7jFSqsu,B2dlJN5jn8,B3qbESsNhr,B4gnN6CJaM,B5Qt7737vx,B5sO2SatBM,B5vNU2iOZU,B6OE-yIHnm,B79rCXblX6,B7KSd7CN7u,B7nwhkK5nz,B898UyOLta,B9bEbg74mu,B9zx4kPv1y,BCp",
+          "images": []
+        },
+        {
+          "tool": "read_network_requests",
+          "args": {
+            "tabId": 46544404,
+            "clear": true
+          },
+          "ms": 107,
+          "ok": true,
+          "text": "No network requests found for this tab.\n\nNote: Network tracking starts when this tool is first called. If the page loaded before calling this tool, you may need to refresh the page or perform actions that trigger network requests.\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/r/programming/\")",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify([...document.querySelectorAll(\"shreddit-post\")].map((p) => p.id)) + '@@'",
+            "tabId": 46544404
+          },
+          "ms": 51,
+          "ok": true,
+          "text": "@@[\"t3_1xfszv3\",\"t3_1xhbl06\",\"t3_1x97lsb\"]@@\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/r/programming/\")",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify(Math.round(window.scrollY)) + '@@'",
+            "tabId": 46544404
+          },
+          "ms": 10,
+          "ok": true,
+          "text": "@@0@@\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/r/programming/\")",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify([window.innerWidth / 2, window.innerHeight / 2]) + '@@'",
+            "tabId": 46544404
+          },
+          "ms": 17,
+          "ok": true,
+          "text": "@@[756,385.5]@@\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/r/programming/\")",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify(window.innerWidth) + '@@'",
+            "tabId": 46544404
+          },
+          "ms": 6,
+          "ok": true,
+          "text": "@@1512@@\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/r/programming/\")",
+          "images": []
+        },
+        {
+          "tool": "computer",
+          "args": {
+            "action": "scroll",
+            "coordinate": [
+              756,
+              386
+            ],
+            "scroll_direction": "down",
+            "scroll_amount": 10,
+            "tabId": 46544404
+          },
+          "ms": 280,
+          "ok": true,
+          "text": "Scrolled down by 10 ticks at (756, 386)\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/r/programming/\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significantly faster. Batch your next sequence of clicks, types, navigations, and screenshots to",
+          "images": []
+        },
+        {
+          "tool": "computer",
+          "args": {
+            "action": "wait",
+            "duration": 1,
+            "tabId": 46544404
+          },
+          "ms": 1007,
+          "ok": true,
+          "text": "Waited for 1 second\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/r/programming/\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significantly faster. Batch your next sequence of clicks, types, navigations, and screenshots together.</system-remi",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify([...document.querySelectorAll(\"shreddit-post\")].map((p) => p.id)) + '@@'",
+            "tabId": 46544404
+          },
+          "ms": 5,
+          "ok": true,
+          "text": "@@[\"t3_1xfszv3\",\"t3_1xhbl06\",\"t3_1x97lsb\",\"t3_1xgwkhz\",\"t3_1xhl1jb\",\"t3_1xbl8y1\",\"t3_1xgnigv\",\"t3_1wrnyer\",\"t3_1xh84hz\",\"t3_1xbo19y\",\"t3_1xhkwte\",\"t3_1xh15vv\",\"t3_1xa0z6c\",\"t3_1xft3w2\",\"t3_1xh55mz\",\"t3_1xd9rwe\",\"t3_1xcaveo\",\"t3_1xfu0wk\",\"t3_1wt8odk\",\"t3_1xf4c5d\",\"t3_1xe7dp8\",\"t3_1xa9h5w\",\"t3_1xaqyzu\",\"t3_1x32log\",\"t3_1xbcv7y\",\"t3_1x1pypx\",\"t3_1x6uhya\"]@@\n\n\nTab Context:\n- Executed on tabId: 4654440",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify(Math.round(window.scrollY)) + '@@'",
+            "tabId": 46544404
+          },
+          "ms": 21,
+          "ok": true,
+          "text": "@@867@@\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/r/programming/\")",
+          "images": []
+        },
+        {
+          "tool": "read_network_requests",
+          "args": {
+            "tabId": 46544404
+          },
+          "ms": 61,
+          "ok": true,
+          "text": "Found 29 network requests:\n\n1. url: https://www.redditstatic.com/shreddit/hui-grid-client-css-DatJbO4p.css\n   method: GET\n   statusCode: 200\n\n2. url: https://www.redditstatic.com/shreddit/community-guidance-client-css-0yVLCMq3.css\n   method: GET\n   statusCode: 200\n\n3. url: https://www.redditstatic.com/shreddit/subreddit-right-rail-client-css-H7Cacm5c.css\n   method: GET\n   statusCode: 200\n\n4. url: ",
+          "images": []
+        }
+      ],
+      "notes": [
+        "scrolled 0 -> 867px; 3 posts rendered before, 24 new post ids after; 30 request URLs captured"
+      ],
+      "wall_ms": 1573,
+      "tool_calls": 11,
+      "permission_prompts": 10,
+      "permission_log": [
+        "permission ALLOW read_console_messages https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW read_network_requests https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW read_page_content https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW read_network_requests https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4"
+      ]
+    },
+    {
+      "id": "R8",
+      "name": "read_console_messages on a real page",
+      "isolates": "console capture",
+      "verdict": "pass",
+      "calls": [
+        {
+          "tool": "read_console_messages",
+          "args": {
+            "tabId": 46544404
+          },
+          "ms": 6,
+          "ok": true,
+          "text": "No console messages found for this tab.\n\nNote: Console tracking starts when this tool is first called. If the page loaded before calling this tool, you may need to refresh the page to capture console messages from page load.\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/r/programming/\")",
+          "images": []
+        }
+      ],
+      "notes": [
+        "No console messages found for this tab."
+      ],
+      "wall_ms": 6,
+      "tool_calls": 1,
+      "permission_prompts": 1,
+      "permission_log": [
+        "permission ALLOW read_console_messages https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4"
+      ]
+    },
+    {
+      "id": "R9",
+      "name": "open the first post by ref",
+      "isolates": "ref click on a real link",
+      "verdict": "pass",
+      "calls": [
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify((window.scrollTo(0, 0), 0)) + '@@'",
+            "tabId": 46544404
+          },
+          "ms": 4,
+          "ok": true,
+          "text": "@@0@@\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/r/programming/\")",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify([...document.querySelectorAll(\"shreddit-post\")].slice(0, 5).map((p) => [p.getAttribute(\"permalink\"), p.getAttribute(\"post-title\")])) + '@@'",
+            "tabId": 46544404
+          },
+          "ms": 4,
+          "ok": true,
+          "text": "@@[[\"/r/programming/comments/1xfszv3/from_27_minutes_to_4_cutting_ci_build_time_by_85/\",\"From 27 minutes to 4: Cutting CI build time by 85%\"],[\"/r/programming/comments/1xhbl06/python_jettisons_the_native_jit_at_least_for_now/\",\"Python jettisons the native JIT, at least for now\"],[\"/r/programming/comments/1x97lsb/its_still_ok_to_enjoy_programming/\",\"It's still OK to enjoy programming\"],[\"/r/program",
+          "images": []
+        },
+        {
+          "tool": "read_page",
+          "args": {
+            "tabId": 46544404,
+            "max_chars": 60000
+          },
+          "ms": 98,
+          "ok": true,
+          "text": "link [ref_1] href=\"#main-content\"\n generic \"Skip to main content\" [ref_2]\ngeneric \"programming\" [ref_3]\nbanner [ref_4]\n navigation [ref_5]\n  button [ref_6] type=\"button\"\n   generic \"Open menu\" [ref_7]\n  generic \"Open navigation\" [ref_8]\n  link \"Home\" [ref_9] href=\"https://www.reddit.com/\"\n  generic \"Go to Reddit Home\" [ref_10]\n  form [ref_11]\n   generic \"r/programming\" [ref_12]\n   textbox \"Search ",
+          "images": []
+        },
+        {
+          "tool": "computer",
+          "args": {
+            "action": "left_click",
+            "ref": "ref_82",
+            "tabId": 46544404
+          },
+          "ms": 443,
+          "ok": true,
+          "text": "Clicked on element ref_82\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/r/programming/comments/1xfszv3/from_27_minutes_to_4_cutting_ci_build_time_by_85/\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significantly faster. Batch your next sequen",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify([location.pathname, !!document.querySelector('shreddit-post[permalink=\"/r/programming/comments/1xfszv3/from_27_minutes_to_4_cutting_ci_build_time_by_85/\"]')]) + '@@'",
+            "tabId": 46544404
+          },
+          "ms": 5,
+          "ok": true,
+          "text": "@@[\"/r/programming/comments/1xfszv3/from_27_minutes_to_4_cutting_ci_build_time_by_85/\",true]@@\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/r/programming/comments/1xfszv3/from_27_minutes_to_4_cutting_ci_build_time_by_85/\")",
+          "images": []
+        },
+        {
+          "tool": "get_page_text",
+          "args": {
+            "tabId": 46544404
+          },
+          "ms": 59,
+          "ok": true,
+          "text": "Title: programming\nURL: https://www.reddit.com/r/programming/comments/1xfszv3/from_27_minutes_to_4_cutting_ci_build_time_by_85/\nSource element: <article>\n---\nRepost\nJust finished my multiplayer system in C and turns out we can support 50k players in a single server at 60hz simulation tick\nu/dechichi\n•\n3 days ago\nJust finished my multiplayer system in C and turns out we can support 50k players in a",
+          "images": []
+        }
+      ],
+      "notes": [
+        "opened \"From 27 minutes to 4: Cutting CI build time by 85%\"; get_page_text misses the title (source <article>)"
+      ],
+      "wall_ms": 614,
+      "tool_calls": 6,
+      "permission_prompts": 6,
+      "permission_log": [
+        "permission ALLOW execute_javascript https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW read_page_content https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW click https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW execute_javascript https://www.reddit.com/r/programming/comments/1xfszv3/from_27_minutes_to_4_cutting_ci_build_time_by_85/ 40d784c3-f269-48ae-803a-c38e32aaa6b4",
+        "permission ALLOW read_page_content https://www.reddit.com/r/programming/comments/1xfszv3/from_27_minutes_to_4_cutting_ci_build_time_by_85/ 40d784c3-f269-48ae-803a-c38e32aaa6b4"
+      ]
+    },
+    {
+      "id": "R10",
+      "name": "navigate \"back\"",
+      "isolates": "history navigation",
+      "verdict": "pass",
+      "calls": [
+        {
+          "tool": "navigate",
+          "args": {
+            "url": "back",
+            "tabId": 46544404
+          },
+          "ms": 311,
+          "ok": true,
+          "text": "Navigated back to https://www.reddit.com/r/programming/\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/r/programming/\")\n<system-reminder>You used a single tool call this turn. Prefer browser_batch to execute multiple actions in one call — it is significantly faster. Batch your next sequence of clicks, types, navigations, an",
+          "images": []
+        },
+        {
+          "tool": "javascript_tool",
+          "args": {
+            "action": "javascript_exec",
+            "text": "'@@' + JSON.stringify(location.pathname) + '@@'",
+            "tabId": 46544404
+          },
+          "ms": 11,
+          "ok": true,
+          "text": "@@\"/r/programming/\"@@\n\n\nTab Context:\n- Executed on tabId: 46544404\n- Available tabs:\n  • tabId 46544404: \"programming\" (\"https://www.reddit.com/r/programming/\")",
+          "images": []
+        }
+      ],
+      "notes": [],
+      "wall_ms": 322,
+      "tool_calls": 2,
+      "permission_prompts": 1,
+      "permission_log": [
+        "permission ALLOW execute_javascript https://www.reddit.com/r/programming/ 40d784c3-f269-48ae-803a-c38e32aaa6b4"
+      ]
+    }
+  ]
+}

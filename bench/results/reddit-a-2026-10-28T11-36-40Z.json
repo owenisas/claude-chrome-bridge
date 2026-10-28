@@ -1,0 +1,143 @@
+{
+  "arm": "A",
+  "label": "stock extension via Claude Code's own Claude in Chrome integration (relay, signed in)",
+  "driver": "agent: a Claude Code desktop session calling mcp__claude-in-chrome__* tools; no per-call timing",
+  "mode": "background session group (the integration's default)",
+  "device_id": "8d382f4a-a517-4803-8ee7-9ce6212fb23d",
+  "extension_version": "1.0.102",
+  "browser": "Chrome/155.0.0.0 (operator's daily profile)",
+  "permission_mode": "Claude Code session in bypass-permissions mode: no site prompts were shown",
+  "suite": "reddit",
+  "started_at": "2026-10-28T11:33:30Z",
+  "site": "https://www.reddit.com/r/programming/",
+  "summary": {
+    "pass": 0,
+    "degraded": 0,
+    "fail": 1,
+    "not run": 9
+  },
+  "total_tool_calls": 2,
+  "total_permission_prompts": 0,
+  "tasks": [
+    {
+      "id": "R1",
+      "name": "open a subreddit",
+      "isolates": "real-site navigation + gating",
+      "verdict": "fail",
+      "tool_calls": 2,
+      "wall_ms": null,
+      "permission_prompts": 0,
+      "notes": [
+        "navigate refused: \"This site is not allowed due to safety restrictions.\" The extension's hosted URL-category lookup returned category1/category2 for reddit.com (an org block has a different message)."
+      ]
+    },
+    {
+      "id": "R2",
+      "name": "get_page_text on a heavy page",
+      "isolates": "content extraction",
+      "verdict": "not run",
+      "tool_calls": 0,
+      "wall_ms": null,
+      "permission_prompts": 0,
+      "notes": [
+        "blocked at R1"
+      ]
+    },
+    {
+      "id": "R3",
+      "name": "read_page interactive on a web-component app",
+      "isolates": "snapshot quality on a real site",
+      "verdict": "not run",
+      "tool_calls": 0,
+      "wall_ms": null,
+      "permission_prompts": 0,
+      "notes": [
+        "blocked at R1"
+      ]
+    },
+    {
+      "id": "R4",
+      "name": "find \"search box\"",
+      "isolates": "semantic find",
+      "verdict": "not run",
+      "tool_calls": 0,
+      "wall_ms": null,
+      "permission_prompts": 0,
+      "notes": [
+        "blocked at R1"
+      ]
+    },
+    {
+      "id": "R5",
+      "name": "search the site for \"rust\"",
+      "isolates": "typing into a real control",
+      "verdict": "not run",
+      "tool_calls": 0,
+      "wall_ms": null,
+      "permission_prompts": 0,
+      "notes": [
+        "blocked at R1"
+      ]
+    },
+    {
+      "id": "R6",
+      "name": "screenshot of a real page",
+      "isolates": "capture",
+      "verdict": "not run",
+      "tool_calls": 0,
+      "wall_ms": null,
+      "permission_prompts": 0,
+      "notes": [
+        "blocked at R1"
+      ]
+    },
+    {
+      "id": "R7",
+      "name": "infinite scroll loads more posts; network capture",
+      "isolates": "scroll + network on a real feed",
+      "verdict": "not run",
+      "tool_calls": 0,
+      "wall_ms": null,
+      "permission_prompts": 0,
+      "notes": [
+        "blocked at R1"
+      ]
+    },
+    {
+      "id": "R8",
+      "name": "read_console_messages on a real page",
+      "isolates": "console capture",
+      "verdict": "not run",
+      "tool_calls": 0,
+      "wall_ms": null,
+      "permission_prompts": 0,
+      "notes": [
+        "blocked at R1"
+      ]
+    },
+    {
+      "id": "R9",
+      "name": "open the first post by ref",
+      "isolates": "ref click on a real link",
+      "verdict": "not run",
+      "tool_calls": 0,
+      "wall_ms": null,
+      "permission_prompts": 0,
+      "notes": [
+        "blocked at R1"
+      ]
+    },
+    {
+      "id": "R10",
+      "name": "navigate \"back\"",
+      "isolates": "history navigation",
+      "verdict": "not run",
+      "tool_calls": 0,
+      "wall_ms": null,
+      "permission_prompts": 0,
+      "notes": [
+        "blocked at R1"
+      ]
+    }
+  ]
+}

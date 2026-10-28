@@ -199,8 +199,15 @@ as an error naming the host and the `cli.mjs allow` command for the operator.
 reads host paths itself), but only from the directory Claude Code started it in
 plus `CCB_UPLOAD_ROOTS`.
 
+Each MCP session works in its own background tab group: an inactive tab in the
+browser's last-focused window, like the stock integration, instead of a new
+focused window. The CLI does the same when `CCB_SESSION=<id>` is set.
+
 `node bridge/selftest.mjs` checks the routing and the adapter against fake
 browsers on spare ports, without touching a live bridge.
+
+[`docs/BENCHMARK.md`](docs/BENCHMARK.md) compares this path with the official
+integration in the same Chrome, on a local fixture and on Reddit.
 
 ## Tool surface
 
@@ -234,7 +241,7 @@ These are structural, not bugs — each one is a feature that lived on Anthropic
 
 - **`find` is LLM-backed.** It calls an inference service that isn't reachable in local mode, so it fails with `Anthropic client not available`. The CLI and the MCP adapter substitute a lexical scorer over the `read_page --interactive` snapshot. Semantic "find the login button" degrades to text matching.
 - **`browser_batch` pre-checks the extension's internal grant store**, which stays empty locally, so it refuses any prompt-gated action. The CLI and the MCP adapter detect `permission_required` and replay the list as standalone calls — working, but no longer one atomic batch.
-- **URL category blocking is off.** Patch 3 makes the hosted category lookup skip instead of failing closed, so Anthropic's malicious-site categories (`category1`/`category2`) are no longer enforced.
+- **URL category blocking is off.** Patch 3 makes the hosted category lookup skip instead of failing closed, so Anthropic's malicious-site categories (`category1`/`category2`) are no longer enforced. Concretely, the official build refuses reddit.com and this one reaches it ([`docs/BENCHMARK.md`](docs/BENCHMARK.md)). The allowlist is the only gate.
 - **Plan approval (`follow_a_plan`) and per-site "always allow" grants** are not in the loop; the local allowlist is host-granular only.
 - **Account features are inert**: scheduled tasks and skills migration (need an org UUID), saved-prompt sync, claude.ai messaging, onboarding, the permissions page.
 - **The orchestrator moved.** Upstream, Claude's backend decides the next action and supplies `find`/plan-mode/inference-relay. Here the caller is the orchestrator, so an agent using this drives the loop itself.
@@ -266,6 +273,8 @@ That is a bounded observation, not a proof — worth re-running yourself with th
 | `bridge/mcp.mjs` | stdio MCP server for Claude Code over the same HTTP API |
 | `bridge/local-find.mjs` | the offline `find` scorer, shared by the CLI and the adapter |
 | `bridge/selftest.mjs` | routing + adapter self-test with fake browsers on spare ports |
+| `bench/` | benchmark fixture and server, the arm-B suites (`arm-b.mjs`, `reddit-b.mjs`, shared `harness.mjs`), raw `results/` |
+| `docs/BENCHMARK.md` | official vs local, same browser: results and findings |
 | `RECON.md` | the full reverse-engineering write-up: protocol, evidence, patch rationale, failure modes |
 | `docs/HANDOFF-claude-code.md` | handoff for driving this from Claude Code |
 | `tools/ctx.py` | minified-JS context extractor used during the RE |

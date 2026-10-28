@@ -1,0 +1,204 @@
+{
+  "arm": "A",
+  "label": "stock extension via Claude Code's own Claude in Chrome integration (relay, signed in)",
+  "driver": "agent: a Claude Code desktop session calling mcp__claude-in-chrome__* tools; no per-call timing",
+  "mode": "background session group (the integration's default)",
+  "device_id": "8d382f4a-a517-4803-8ee7-9ce6212fb23d",
+  "extension_version": "1.0.102",
+  "browser": "Chrome/155.0.0.0 (operator's daily profile)",
+  "permission_mode": "Claude Code session in bypass-permissions mode: no site prompts were shown",
+  "suite": "fixture",
+  "started_at": "2026-10-28T11:33:30Z",
+  "fixture": "http://127.0.0.1:8899/",
+  "summary": {
+    "pass": 15,
+    "degraded": 0,
+    "fail": 0,
+    "not run": 0
+  },
+  "total_tool_calls": 49,
+  "total_permission_prompts": 0,
+  "tasks": [
+    {
+      "id": 1,
+      "name": "navigate to the fixture",
+      "isolates": "transport + permission gating",
+      "verdict": "pass",
+      "tool_calls": 3,
+      "wall_ms": null,
+      "permission_prompts": 0,
+      "notes": [
+        "tabs_context_mcp(createIfEmpty) made an inactive tab in a new session group, no new window",
+        "page reported visibilityState=visible, hasFocus=true (arm B: hidden/false)"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "read_page interactive: count refs, locate the submit button",
+      "isolates": "snapshot quality",
+      "verdict": "pass",
+      "tool_calls": 1,
+      "wall_ms": null,
+      "permission_prompts": 0,
+      "notes": [
+        "12 refs; identical to arm B, including the unnamed label-wrapped textboxes"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "find \"submit button\"",
+      "isolates": "semantic find (expected to diverge)",
+      "verdict": "pass",
+      "tool_calls": 1,
+      "wall_ms": null,
+      "permission_prompts": 0,
+      "notes": [
+        "ref_5: button \"Submit order\", with a one-line rationale from the model"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "form_input fill, then computer type",
+      "isolates": "the two input paths",
+      "verdict": "pass",
+      "tool_calls": 4,
+      "wall_ms": null,
+      "permission_prompts": 0,
+      "notes": []
+    },
+    {
+      "id": 5,
+      "name": "left_click by ref on the mutating button",
+      "isolates": "ref resolution + real input events",
+      "verdict": "pass",
+      "tool_calls": 2,
+      "wall_ms": null,
+      "permission_prompts": 0,
+      "notes": []
+    },
+    {
+      "id": 6,
+      "name": "computer screenshot",
+      "isolates": "capture",
+      "verdict": "pass",
+      "tool_calls": 1,
+      "wall_ms": null,
+      "permission_prompts": 0,
+      "notes": [
+        "1485x812 jpeg; draws a cursor marker at the last pointer position"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "javascript_tool reads a page variable",
+      "isolates": "JS eval",
+      "verdict": "pass",
+      "tool_calls": 1,
+      "wall_ms": null,
+      "permission_prompts": 0,
+      "notes": []
+    },
+    {
+      "id": 8,
+      "name": "read_console_messages after triggering an error",
+      "isolates": "console capture",
+      "verdict": "pass",
+      "tool_calls": 3,
+      "wall_ms": null,
+      "permission_prompts": 0,
+      "notes": []
+    },
+    {
+      "id": 9,
+      "name": "read_network_requests after a fetch",
+      "isolates": "network capture",
+      "verdict": "pass",
+      "tool_calls": 4,
+      "wall_ms": null,
+      "permission_prompts": 0,
+      "notes": []
+    },
+    {
+      "id": 10,
+      "name": "multi-step: fill, submit, assert the result",
+      "isolates": "orchestration, step count",
+      "verdict": "pass",
+      "tool_calls": 6,
+      "wall_ms": null,
+      "permission_prompts": 0,
+      "notes": []
+    },
+    {
+      "id": 11,
+      "name": "cross-domain hop, count permission prompts",
+      "isolates": "the permission model",
+      "verdict": "pass",
+      "tool_calls": 2,
+      "wall_ms": null,
+      "permission_prompts": 0,
+      "notes": [
+        "hop to http://localhost:8899/ allowed with no prompt (bypass-permissions session)"
+      ]
+    },
+    {
+      "id": 12,
+      "name": "browser_batch with a prompt-gated action",
+      "isolates": "batch gating (expected to diverge)",
+      "verdict": "pass",
+      "tool_calls": 1,
+      "wall_ms": null,
+      "permission_prompts": 0,
+      "notes": [
+        "native batch: navigate + screenshot in one call"
+      ]
+    },
+    {
+      "id": 13,
+      "name": "tabs_create_mcp / tabs_close_mcp lifecycle",
+      "isolates": "tab grouping",
+      "verdict": "pass",
+      "tool_calls": 4,
+      "wall_ms": null,
+      "permission_prompts": 0,
+      "notes": [
+        "skipped arm B's initial listing; the group's contents were already known"
+      ]
+    },
+    {
+      "id": 14,
+      "name": "resize_window, zoom, scroll, scroll_to, hover, drag",
+      "isolates": "the unverified tail",
+      "verdict": "pass",
+      "tool_calls": 12,
+      "wall_ms": null,
+      "permission_prompts": 0,
+      "notes": [
+        "resize_window skipped as in background-mode arm B; scroll_to's ref came from find (ref_36) rather than the full read_page"
+      ],
+      "sub": {
+        "resize_window": "skipped: the tab lives in the operator's window in background mode",
+        "zoom": "pass",
+        "scroll": "pass",
+        "scroll_to": "pass",
+        "hover": "pass",
+        "drag": "pass"
+      }
+    },
+    {
+      "id": 15,
+      "name": "upload_image / file_upload with the fixture PNG",
+      "isolates": "file paths",
+      "verdict": "pass",
+      "tool_calls": 4,
+      "wall_ms": null,
+      "permission_prompts": 0,
+      "notes": [
+        "file_upload took paths; the client read the file"
+      ],
+      "sub": {
+        "file_upload": "pass",
+        "upload_image": "pass"
+      }
+    }
+  ]
+}

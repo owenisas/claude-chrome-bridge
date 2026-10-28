@@ -170,7 +170,10 @@ a bug report.
 
 1. **Verify the current state before touching anything.** `node bridge/cli.mjs status` should show `connected: true`; if not, `node bridge/launch.mjs` (and check `tmp/browsers/` exists).
 2. ~~**Build the MCP adapter**~~ — **done** (see "Where we are"). Left over: a live run of the page tools through the adapter needs a host on the allowlist (the self-test covers them against fake browsers).
-3. **Run the native-vs-local benchmark** (design above). Build `bench/fixture/` and the arm-B harness first. Both arms can now run **in the same browser profile** — the patched build is forked, so it installs alongside the stock extension. Publish `docs/BENCHMARK.md` with raw results and the arm-A caveats.
+3. ~~**Run the native-vs-local benchmark**~~: **done**, see [`docs/BENCHMARK.md`](BENCHMARK.md) and `bench/results/`. Both arms ran in the operator's daily Chrome.
+   - **Fixture:** official 15/15 pass; local 13 pass, 2 degraded (the predicted `find` and `browser_batch`).
+   - **Reddit, read-only:** the official build refused reddit.com through Anthropic's URL-category check. The local build reached it (6 pass, 3 degraded, 1 fail) because patch 3 skips that check.
+   - **Background mode:** the bridge now passes a `session_scope`, so work happens in an inactive tab in the operator's window instead of a new focused window. The adapter, `CCB_SESSION` and the benchmark all use it.
 4. **Install the forked build into the browser you'll benchmark in.** `chrome://extensions` → Developer mode → **Load unpacked** → `extension-patched/`. It appears as `Claude (local bridge)` with id `ioohpagdjalmcbkcmmbnbdjfokmjaodl`. The stock `Claude` extension can stay installed — that's the point of the fork. (If you ever rebuild without `--fork-id`, the ids collide again and you must disable the stock one.)
 5. **Keep the bridge running** whenever the patched extension is installed, or the extension sits there retrying with nothing to talk to. (A launchd agent under `~/Library/LaunchAgents/` is the tidy option; not set up.)
 6. **Harden the HTTP API** before pointing this at a daily-use profile: validate the `Host` header (DNS-rebinding gap, README "Security model") and consider a token on `/tool`.
@@ -181,3 +184,4 @@ a bug report.
 - ~~Raw tools or a curated set?~~ Answered: the full 17, so stock instructions work unchanged; `find` and `browser_batch` get the CLI's local fallbacks inside the adapter.
 - ~~User scope or project scope?~~ Answered for now: local scope for `~/Documents/Automation-agents`, where agent sessions start. For every project: `claude mcp add -s user claude-chrome -- node <repo>/bridge/mcp.mjs`.
 - Is per-host allowlisting granular enough, or does the operator want per-action control (`click` vs `read_page_content`) that the extension already models internally?
+- The local build doesn't apply Anthropic's site categories (the benchmark shows reddit.com: refused natively, reachable locally). Should the bridge keep a local denylist, so that allowlisting a broad domain can't reach categories the operator would rather keep out?

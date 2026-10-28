@@ -218,6 +218,10 @@ try {
   check('list_connected_browsers marks the selection inUse', listed.browsers.find((b) => b.inUse)?.deviceId === 'bbbb2222-agent', listed);
   r = await mcp.call('tabs_context_mcp', {});
   check('calls go to the selected browser', textOf(r.content) === 'peer:bbbb2222-agent', r);
+  const scope = agent2.calls.at(-1)?.session_scope;
+  check('adapter sends a session_scope (background tab group)', typeof scope?.sessionId === 'string' && scope.sessionId.length > 8 && scope.displayName, scope);
+  const badScope = await api('/tool', { method: 'POST', body: JSON.stringify({ tool: 'tabs_context_mcp', session_scope: { displayName: 'x' } }) });
+  check('bridge rejects a session_scope without sessionId', /sessionId/.test(badScope.error || ''), badScope);
 
   r = await mcp.call('computer', { action: 'screenshot', tabId: 1 });
   const img = r.content.find((b) => b.type === 'image');

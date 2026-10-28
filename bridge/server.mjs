@@ -218,7 +218,10 @@ listen('127.0.0.1');
 listen('::1');
 
 // ---------------------------------------------------------------- tool calls
-function runTool(tool, args = {}, timeoutMs = TOOL_TIMEOUT_MS, device) {
+// sessionScope ({sessionId, displayName}) puts the call in a per-session tab
+// group: the extension adds an inactive tab to the last-focused window instead
+// of opening a focused window, so it works in the background.
+function runTool(tool, args = {}, timeoutMs = TOOL_TIMEOUT_MS, device, sessionScope) {
   let ws;
   try { ws = pickPeer(device); } catch (err) { return Promise.reject(err); }
   const id = crypto.randomUUID();
@@ -237,6 +240,7 @@ function runTool(tool, args = {}, timeoutMs = TOOL_TIMEOUT_MS, device) {
       handle_permission_prompts: true,
       supports_tool_result_notices: true,
       supports_tool_result_error_code: true,
+      ...(sessionScope && { session_scope: sessionScope }),
     });
     if (!ok) {
       clearTimeout(timer);
@@ -308,8 +312,13 @@ const httpServer = http.createServer(async (req, res) => {
       // file_upload carries base64 file bodies (up to 10 MB of files)
       const body = JSON.parse(await readBody(req, 24 << 20) || '{}');
       if (!body.tool) return json(res, 400, { error: 'tool required' });
+      const scope = body.session_scope;
+      if (scope !== undefined && (typeof scope?.sessionId !== 'string' || !scope.sessionId)) {
+        return json(res, 400, { error: 'session_scope needs a string sessionId' });
+      }
+      const sessionScope = scope && { sessionId: scope.sessionId, displayName: String(scope.displayName || 'Claude (local bridge)') };
       try {
-        const result = await runTool(body.tool, body.args || {}, body.timeout_ms || TOOL_TIMEOUT_MS, body.device_id);
+        const result = await runTool(body.tool, body.args || {}, body.timeout_ms || TOOL_TIMEOUT_MS, body.device_id, sessionScope);
         return json(res, 200, { ok: !result.is_error && !result.error, result });
       } catch (err) {
         return json(res, 200, { ok: false, error: err.message });

@@ -15,10 +15,12 @@
  * Env:
  *   CCB_API           bridge URL (default http://127.0.0.1:8766)
  *   CCB_DEVICE        preselect a browser by device_id
+ *   CCB_SESSION_NAME  title of this session's tab group
  *   CCB_UPLOAD_ROOTS  extra directories file_upload may read, ':'-separated
  *
  * stdout carries only JSON-RPC; diagnostics go to stderr.
  */
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -39,6 +41,11 @@ const UPLOAD_ROOTS = [process.cwd(), ...(process.env.CCB_UPLOAD_ROOTS || '').spl
   .filter(Boolean);
 
 let device = process.env.CCB_DEVICE || undefined;   // set by select_browser
+
+// One tab group per MCP session, like the stock integration: the extension adds
+// an inactive tab to the browser's last-focused window instead of opening a
+// focused window, so the agent works in the background.
+const SESSION_SCOPE = { sessionId: crypto.randomUUID(), displayName: process.env.CCB_SESSION_NAME || 'Claude (local bridge)' };
 
 // ---------------------------------------------------------------- tool registry
 const tabId = { type: 'number', description: 'Tab id from tabs_context_mcp.' };
@@ -271,7 +278,7 @@ async function api(p, opts = {}) {
 function callExtension(name, args, timeoutMs) {
   return api('/tool', {
     method: 'POST',
-    body: JSON.stringify({ tool: name, args, timeout_ms: timeoutMs, device_id: device }),
+    body: JSON.stringify({ tool: name, args, timeout_ms: timeoutMs, device_id: device, session_scope: SESSION_SCOPE }),
   });
 }
 

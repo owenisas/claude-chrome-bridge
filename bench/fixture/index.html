@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CCB benchmark fixture</title>
+<style>
+  :root { color-scheme: light; }
+  body { font: 14px/1.4 system-ui, sans-serif; margin: 16px; background: #fff; color: #111; }
+  section { margin: 0 0 14px; }
+  label { margin-right: 10px; }
+  #scroller { height: 120px; width: 320px; overflow: auto; border: 1px solid #888; }
+  #scroller .pad { height: 900px; padding: 6px; }
+  #hover { display: inline-block; padding: 8px 12px; border: 1px solid #888; }
+  #hover[data-hovered="1"] { background: #fd0; }
+  #drag { display: inline-block; width: 90px; padding: 10px; background: #cde; cursor: grab; user-select: none; }
+  #drop { width: 180px; height: 60px; border: 2px dashed #888; margin-top: 10px; display: flex; align-items: center; justify-content: center; }
+  #spacer { height: 1600px; }
+</style>
+<script>window.FIXTURE_VAR = { name: 'ccb-fixture', n: 42 };</script>
+</head>
+<body>
+<h1>CCB benchmark fixture</h1>
+
+<section>
+  <form id="f">
+    <label>Name <input id="name" name="name" autocomplete="off"></label>
+    <label>Email <input id="email" name="email" autocomplete="off"></label>
+    <label>Color
+      <select id="color" name="color">
+        <option value="red">Red</option>
+        <option value="green">Green</option>
+        <option value="blue">Blue</option>
+      </select>
+    </label>
+    <label><input type="checkbox" id="agree" name="agree"> Agree</label>
+    <button id="submit" type="submit">Submit order</button>
+  </form>
+  <p id="result">not submitted</p>
+</section>
+
+<section>
+  <button id="hashbtn" type="button">Change hash</button>
+  <span id="hashtext">idle</span>
+</section>
+
+<section>
+  <button id="errbtn" type="button">Log error and fetch</button>
+  <span id="fetchout">no fetch</span>
+</section>
+
+<section>
+  <div id="hover" role="button" tabindex="0" aria-label="Hover target">Hover target</div>
+</section>
+
+<section>
+  <div id="drag" role="button" tabindex="0" aria-label="Drag source">Drag source</div>
+  <div id="drop" role="region" aria-label="Drop target">Drop target</div>
+</section>
+
+<section>
+  <input type="file" id="file1" aria-label="Upload one">
+  <input type="file" id="file2" aria-label="Upload two">
+</section>
+
+<section>
+  <div id="scroller" role="region" aria-label="Scroll box" tabindex="0">
+    <div class="pad">top of the scroll box</div>
+    <button id="inner" type="button">Inner button</button>
+  </div>
+</section>
+
+<div id="spacer"></div>
+<button id="far" type="button">Far button</button>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  $('f').addEventListener('submit', (e) => {
+    e.preventDefault();
+    $('result').textContent = 'submitted:' + [$('name').value, $('email').value, $('color').value, $('agree').checked].join('|');
+  });
+
+  $('hashbtn').addEventListener('click', () => {
+    location.hash = 'clicked';
+    $('hashtext').textContent = 'clicked at ' + Date.now();
+  });
+
+  $('errbtn').addEventListener('click', async () => {
+    console.error('ccb-fixture-error');
+    const r = await fetch('/api/ping?from=fixture');
+    $('fetchout').textContent = await r.text();
+  });
+
+  $('hover').addEventListener('mouseenter', () => { $('hover').dataset.hovered = '1'; });
+
+  // Plain mouse events, not HTML5 drag and drop: synthetic input from either
+  // extension reliably produces mousedown / mousemove / mouseup.
+  let dragging = false;
+  $('drag').addEventListener('mousedown', () => { dragging = true; });
+  document.addEventListener('mouseup', (e) => {
+    if (!dragging) return;
+    dragging = false;
+    const over = document.elementFromPoint(e.clientX, e.clientY);
+    if (over && over.closest('#drop')) $('drop').textContent = 'dropped';
+  });
+</script>
+</body>
+</html>
