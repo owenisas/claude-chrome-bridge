@@ -1,0 +1,31 @@
+# NOTICE
+
+**This repository contains no code from Anthropic.**
+
+What is here is original work: a local WebSocket relay replacement, a launcher,
+a CLI, and a patch script. The patch script (`tools/apply-patches.py`) *modifies*
+a copy of the *Claude in Chrome* extension that **you** obtain yourself — it does
+not include, mirror, or redistribute that extension, its CRX, its unpacked
+files, or any beautified form of its source.
+
+The `.gitignore` deliberately excludes `binary/`, `extension-clean/`,
+`extension-patched/` and `analysis/` so that a local build cannot be committed
+by accident.
+
+"Claude", "Claude in Chrome" and "Anthropic" are trademarks of Anthropic PBC.
+This project is **not affiliated with, endorsed by, or supported by Anthropic**.
+It is an interoperability experiment: it points the extension at a relay on
+loopback instead of Anthropic's, and replaces the account-backed permission
+prompt with a local allowlist.
+
+## What this means for you
+
+- **Redistribution:** don't commit or publish a patched extension bundle. Ship
+  the patch script; let people patch their own copy. That is what this repo does.
+- **Terms of service:** modifying a client you have installed and driving your
+  own browser with it is your call to make. Read the terms that apply to you
+  before using this against a service you don't control.
+- **The extension's own safeguards:** the patch set intentionally turns off one
+  upstream safeguard (the hosted URL-category check) because it fails closed
+  when offline. That is documented in `RECON.md` §6 — it is a real trade-off,
+  not an oversight.

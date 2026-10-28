@@ -1,0 +1,14 @@
+# Anthropic's extension code is NOT redistributed here. These paths are the
+# stock bundle, the unpacked copy and the patched build — all derived from
+# Anthropic's proprietary CRX. Regenerate them locally with
+# tools/apply-patches.py against your own copy.
+binary/
+extension-clean/
+extension-patched/
+analysis/
+
+# runtime + scratch
+node_modules/
+tmp/
+*.log
+.DS_Store
