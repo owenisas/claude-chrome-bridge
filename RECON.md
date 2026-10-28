@@ -229,7 +229,9 @@ The script applies all four patches, then parses every patched bundle with
 template literal, the failure mode described in section 3.
 
 It is byte-reproducible: patching `extension-clean/` reproduces the verified
-`extension-patched/` exactly (all four files and the manifest).
+`extension-patched/` exactly (all four bundles and the manifest) — that holds for
+the default patch set. Adding `--fork-id` additionally rewrites the manifest
+`key` and `name`; the four bundles are still byte-identical.
 
 ---
 

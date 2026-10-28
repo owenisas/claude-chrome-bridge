@@ -113,6 +113,12 @@ You supply the extension; this repo supplies the patch and the bridge.
 
 # 2. patch it (no Anthropic code is stored in this repo)
 python3 tools/apply-patches.py --crx ~/Downloads/claude-chrome.crx
+
+#    ...or give the build its own extension id, so it installs ALONGSIDE the
+#    store extension instead of replacing it (handy for comparing the two)
+python3 tools/apply-patches.py --crx ~/Downloads/claude-chrome.crx --fork-id
+#    -> forked identity: ioohpagdjalmcbkcmmbnbdjfokmjaodl
+#    -> name: Claude (local bridge)
 #    -> writes ./extension-patched/ and verifies every bundle still parses
 
 # 3. bridge: the relay replacement + allowlist API
@@ -161,7 +167,7 @@ node bridge/server.mjs
 
 4. `chrome://extensions` → enable **Developer mode** (top right).
 
-5. Disable or remove the stock **Claude** extension. It shares the id with the patched build (the manifest carries the store `key`), so the two cannot coexist in one profile.
+5. Disable or remove the stock **Claude** extension — **unless you built with `--fork-id`**, in which case it has its own id and the two coexist under different names (`Claude` and `Claude (local bridge)`). Without the fork they share one id (the manifest carries the store `key`) and cannot both be installed.
 
 6. **Load unpacked** → select `~/Documents/Automation-agents/claude-chrome-re/extension-patched`
 
@@ -176,6 +182,25 @@ A user-initiated unpacked install persists across restarts, so from then on the 
 **If you want the bridge up automatically** at login, wrap step 2 in a launchd agent under `~/Library/LaunchAgents/`. Not set up here — ask if you want it.
 
 **What this does not touch:** your normal browsing. The extension only acts when driven, and the bridge only listens on loopback. The patched build has no host permissions beyond what the store extension already had — it is the same bundle, pointed elsewhere.
+
+#### Running both side by side
+
+With `--fork-id` the two builds coexist in one profile, which is what you want if
+you're comparing them:
+
+| | Stock build | Forked build |
+|---|---|---|
+| id | `fcoeoabgfenejglbffodgkkbkcdhcgfn` | `ioohpagdjalmcbkcmmbnbdjfokmjaodl` |
+| name in `chrome://extensions` | `Claude` | `Claude (local bridge)` |
+| talks to | Anthropic's relay (needs an account) | `ws://localhost:8765` |
+
+The id is a pure function of the manifest `key`, so the fork is reproducible:
+`tools/apply-patches.py --fork-id` reuses `.fork-key.pem` (gitignored) and always
+derives the same id. Delete that file and you get a fresh identity instead.
+
+One caveat when both are running: **the bridge tracks a single extension socket.**
+Only the forked build dials it, so that's fine — but two *forked* installs in two
+browsers will fight over the channel, last one wins.
 
 ---
 

@@ -22,13 +22,24 @@ Usage
     # or from an already-unpacked directory
     python3 tools/apply-patches.py --src extension-clean --out extension-patched
 
+    # give it its own extension id so it installs ALONGSIDE the store build
+    python3 tools/apply-patches.py --crx ~/Downloads/claude-chrome.crx --fork-id
+
 Both produce `extension-patched/`, which is what `bridge/launch.mjs` loads.
+
+`--fork-id` replaces the manifest `key`, which is the sole input to the
+extension id. The store build and a forked build then coexist in one profile
+under different ids — useful for running the two side by side. The keypair is
+kept at `.fork-key.pem` (gitignored) purely so the id stays stable across
+rebuilds; an unpacked load needs only the public half.
 
 Why patch 3 and 4 exist is documented in RECON.md; they are not cosmetic.
 """
 from __future__ import annotations
 
 import argparse
+import base64
+import hashlib
 import json
 import os
 import re
@@ -95,8 +106,7 @@ def one(pattern: str, text: str, what: str) -> re.Match:
     return hits[0]
 
 
-def patch_csp(path: Path) -> None:
-    m = json.loads(path.read_text())
+def patch_csp(m: dict) -> None:
     csp = m["content_security_policy"]["extension_pages"]
     if "ws://localhost:8765" in csp:
         print("  csp already allows the bridge; skipping")
@@ -104,7 +114,42 @@ def patch_csp(path: Path) -> None:
     i = csp.index("connect-src")
     j = csp.index(";", i) if ";" in csp[i:] else len(csp)
     m["content_security_policy"]["extension_pages"] = csp[:j] + " ws://localhost:8765" + csp[j:]
-    path.write_text(json.dumps(m, indent=2) + "\n")
+
+
+def derive_extension_id(der: bytes) -> str:
+    """Chrome's extension id: the first 16 bytes of SHA-256 over the DER-encoded
+    SubjectPublicKeyInfo, written as hex and mapped 0-f -> a-p."""
+    digest = hashlib.sha256(der).digest()[:16]
+    return "".join(chr(ord("a") + (b >> 4)) + chr(ord("a") + (b & 0xF)) for b in digest)
+
+
+def public_key_der(keyfile: Path) -> bytes:
+    r = subprocess.run(["openssl", "rsa", "-in", str(keyfile), "-pubout", "-outform", "DER"],
+                       capture_output=True)
+    if r.returncode != 0:
+        sys.exit(f"openssl could not read {keyfile}: {r.stderr.decode().strip()}")
+    return r.stdout
+
+
+def fork_identity(m: dict, keyfile: Path, name: str | None) -> str:
+    """Give the extension its own id so it can be installed alongside the store
+    build. The id is a pure function of the manifest `key`, so we generate (or
+    reuse) a keypair and replace it. The private key is kept only so the id stays
+    stable across rebuilds — an unpacked load needs just the public half."""
+    if not keyfile.exists():
+        keyfile.parent.mkdir(parents=True, exist_ok=True)
+        r = subprocess.run(["openssl", "genpkey", "-algorithm", "RSA",
+                            "-pkeyopt", "rsa_keygen_bits:2048", "-out", str(keyfile)],
+                           capture_output=True)
+        if r.returncode != 0:
+            sys.exit(f"openssl keygen failed: {r.stderr.decode().strip()}")
+        keyfile.chmod(0o600)
+        print(f"  generated a new keypair: {keyfile}")
+    der = public_key_der(keyfile)
+    m["key"] = base64.b64encode(der).decode()
+    if name:
+        m["name"] = name
+    return derive_extension_id(der)
 
 
 def patch_local_bridge(path: Path) -> None:
@@ -156,6 +201,13 @@ def main() -> None:
     src.add_argument("--crx", type=Path, help="path to a CRX3 you downloaded")
     src.add_argument("--src", type=Path, help="path to an already-unpacked extension")
     ap.add_argument("--out", type=Path, default=here / "extension-patched")
+    ap.add_argument("--fork-id", action="store_true",
+                    help="give the build its own extension id (new manifest key) so it can be "
+                         "installed alongside the store extension instead of replacing it")
+    ap.add_argument("--fork-name", default="Claude (local bridge)",
+                    help="manifest name to use when --fork-id is set (default: %(default)s)")
+    ap.add_argument("--fork-key", type=Path, default=here / ".fork-key.pem",
+                    help="keypair backing the forked id; reused across rebuilds (default: %(default)s)")
     args = ap.parse_args()
 
     out = args.out.resolve()
@@ -166,7 +218,8 @@ def main() -> None:
     else:
         shutil.copytree(args.src.resolve(), out)
 
-    manifest = json.loads((out / "manifest.json").read_text())
+    manifest_path = out / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
     print(f"patching {manifest.get('name')} v{manifest.get('version')} -> {out}")
 
     # Fail loudly if the bundle isn't the one these patches were written for.
@@ -174,10 +227,18 @@ def main() -> None:
         if not (out / rel).exists():
             sys.exit(f"missing {rel} — is this the Claude in Chrome extension? ({what})")
 
-    patch_csp(out / "manifest.json")
+    patch_csp(manifest)
     patch_local_bridge(out / PATCHES[1][0])
     patch_url_safety(out / PATCHES[2][0])
     patch_boot_hook(out / PATCHES[3][0])
+
+    if args.fork_id:
+        new_id = fork_identity(manifest, args.fork_key, args.fork_name)
+        print(f"  forked identity: {new_id}")
+        print(f"  name: {manifest['name']}")
+        print("  (installable next to the store build — no need to disable it)")
+
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
 
     print("verifying bundles parse...")
     for rel, _ in PATCHES[1:]:

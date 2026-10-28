@@ -29,7 +29,8 @@ Claude Code drives a real Chrome through the **patched** Claude in Chrome extens
 - **Claude Code cannot drive the patched extension yet.** Claude Code's own paths to this extension are account-gated (relay pairing, or the claude.ai sidepanel iframe with `BROWSER_CONTROL_PERMISSION_ACCEPTED`), and the patched build points at `ws://localhost:8765` instead. The missing piece is an MCP adapter — see Next actions #2.
 - `find` and `browser_batch` are degraded in local mode (`RECON.md` §6). Not fixable without Anthropic's inference service; `find` can at least be re-pointed at the CLI's local scorer.
 - **The native-vs-local benchmark has not been run.** Design is below; it needs a signed-in Claude account for the native arm.
-- **Ordering constraint:** the stock and patched builds share one extension id, so they cannot coexist in a single profile. If you want the native arm, measure it **before** retiring the stock extension — or run arm B from a second profile.
+- **Coexistence is solved:** `tools/apply-patches.py --fork-id` gives the patched build its own extension id (`ioohpagdjalmcbkcmmbnbdjfokmjaodl`, name `Claude (local bridge)`) by replacing the manifest `key`, so the stock build and the forked build install **side by side in one profile**. Verified: Chrome derives exactly the id the script predicts. The current `extension-patched/` is already forked. This removes the old "disable the stock extension first" ordering constraint — both arms can run in the same browser, which is a much cleaner benchmark.
+- Still true: **the bridge tracks a single extension socket** (`let ext` in `server.mjs`). Only the forked build dials it, so the benchmark is unaffected — but two forked installs in two browsers would fight over the channel.
 
 ## Decisions (do not reopen)
 
@@ -93,9 +94,10 @@ Control what you can: **same extension version (1.0.102), same CRX.** Arm A is t
 unpatched build, arm B is patched from the same file, so every tool
 implementation is identical. Differences are therefore attributable to (i)
 features that need Anthropic servers, (ii) the permission model, (iii) the
-driver — which is exactly what we want to know. Prefer running both arms in the
-**same Chrome** (A in your daily profile, B in a separate profile with the
-unpacked build) so engine version isn't a variable.
+driver — which is exactly what we want to know. Run **both arms in the same
+browser profile**: the patched build is forked (`--fork-id`), so it installs
+alongside the stock extension instead of replacing it, and the engine version
+stops being a variable.
 
 **If arm A cannot be enabled** — no account, feature unavailable, org policy —
 do not fake it. Fall back to the capability matrix and label it clearly as
@@ -164,8 +166,8 @@ a bug report.
 2. **Build the MCP adapter** — `bridge/mcp.mjs`, stdio transport, sitting on `POST /tool`. This is the only thing standing between Claude Code and the patched extension. Expose the tool registry from `RECON.md` §2; keep the extension's arg shapes so instructions written against Claude-in-Chrome work unchanged. Then register it:
    `claude mcp add claude-chrome -- node <repo>/bridge/mcp.mjs`
    Model the tool list on `bridge/cli.mjs` — it already maps every tool and its flags.
-3. **Run the native-vs-local benchmark** (design above). Build `bench/fixture/` and the arm-B harness first, then measure arm A **before** step 4 retires the stock extension. Publish `docs/BENCHMARK.md` with raw results and the arm-A caveats.
-4. **Retire the stock extension.** In `chrome://extensions`, disable or remove *Claude* (id `fcoeoabgfenejglbffodgkkbkcdhcgfn`). It cannot coexist with the patched build — same id, because the manifest carries the store `key`. Then **Load unpacked** → `extension-patched/`.
+3. **Run the native-vs-local benchmark** (design above). Build `bench/fixture/` and the arm-B harness first. Both arms can now run **in the same browser profile** — the patched build is forked, so it installs alongside the stock extension. Publish `docs/BENCHMARK.md` with raw results and the arm-A caveats.
+4. **Install the forked build into the browser you'll benchmark in.** `chrome://extensions` → Developer mode → **Load unpacked** → `extension-patched/`. It appears as `Claude (local bridge)` with id `ioohpagdjalmcbkcmmbnbdjfokmjaodl`. The stock `Claude` extension can stay installed — that's the point of the fork. (If you ever rebuild without `--fork-id`, the ids collide again and you must disable the stock one.)
 5. **Keep the bridge running** whenever the patched extension is installed, or the extension sits there retrying with nothing to talk to. (A launchd agent under `~/Library/LaunchAgents/` is the tidy option; not set up.)
 6. **Harden the HTTP API** before pointing this at a daily-use profile: validate the `Host` header (DNS-rebinding gap, README "Security model") and consider a token on `/tool`.
 7. **Optional:** re-point `find` at the CLI's local scorer inside the extension, so it stops erroring with `Anthropic client not available`.

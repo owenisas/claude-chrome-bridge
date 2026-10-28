@@ -12,3 +12,6 @@ node_modules/
 tmp/
 *.log
 .DS_Store
+
+# Forked-identity keypair (never commit a signing key).
+.fork-key.pem
